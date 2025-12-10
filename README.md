@@ -1,453 +1,327 @@
-# Voice Browser Automation System
+# Scrap AI Bot
 
-## Project Overview
+Voice-controlled computer automation using Claude's Computer Use API. Control your computer naturally through voice commands powered by AI vision and reasoning.
 
-A voice-controlled browser automation system for Ubuntu/Debian that allows users to control a web browser through natural language voice commands. The system uses local wake word detection for privacy, cloud-based AI for intelligence, and local execution for control.
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 
-## Core Concept
+## What is Scrap AI Bot?
 
-**Say a wake word → Speak your command → Watch the browser execute it**
+Scrap AI Bot adds voice control to [Anthropic's Computer Use Demo](https://github.com/anthropics/claude-quickstarts/tree/main/computer-use-demo), enabling hands-free computer automation through natural language.
 
-Example: "Hey Browser, open YouTube and search for cooking tutorials"
+**Say "Ok Computer"** → Speak your command → Watch AI execute it
 
-## System Architecture
+### Example Commands
 
-### High-Level Flow
+- "Ok Computer, open Firefox and search for Python tutorials"
+- "Ok Computer, create a new text document with today's date"
+- "Ok Computer, take a screenshot and save it to desktop"
+- "Ok Computer, organize my downloads folder by file type"
 
-```
-[User Voice] 
-    ↓
-[Local Wake Word Detection] ← Always listening locally
-    ↓
-[Audio Capture] ← Records after wake word
-    ↓
-[Cloud Transcription Service] ← Converts speech to text
-    ↓
-[Claude API] ← Understands intent, returns structured action
-    ↓
-[Local Browser Executor] ← Performs the action visibly
-    ↓
-[Back to Listening] ← Ready for next command
-```
-
-### Design Principles
-
-1. **Privacy First**: Only audio after wake word is sent to cloud
-2. **Hybrid Architecture**: Local processing where possible, cloud for intelligence
-3. **Visual Feedback**: Browser actions are visible on screen
-4. **Headless Capable**: Can run without display, but default assumes screen present
-5. **Self-Contained**: Single repo deployment with minimal dependencies
-6. **Extensible**: Easy to add new actions and capabilities
-
-## Technical Stack
-
-### Local Components
-
-- **Wake Word Detection**: Porcupine by Picovoice
-  - Runs continuously with minimal CPU usage
-  - Triggers audio capture on detection
-  - No network required
-
-- **Audio Capture**: PyAudio or sounddevice
-  - Captures audio after wake word
-  - Configurable duration or silence detection
-  - Formats audio for cloud service
-
-- **Browser Automation**: Playwright
-  - Runs in headed mode (visible browser)
-  - Executes parsed actions from JSON
-  - Supports Chrome/Firefox/Safari
-
-- **Service Management**: systemd
-  - Runs as background service
-  - Auto-starts on boot
-  - Easy start/stop/restart
-
-### Cloud Components
-
-- **Speech-to-Text**: OpenAI Whisper API
-  - Transcribes captured audio to text
-  - High accuracy, multiple languages
-  - Fast processing (~1-2 seconds)
-
-- **Intent Understanding**: Anthropic Claude API
-  - Receives transcript + action grid
-  - Understands user intent
-  - Returns structured JSON with action parameters
-
-### Data Flow Format
-
-**Audio → Cloud → JSON → Action**
-
-Example JSON response from Claude:
-```json
-{
-  "intent": "navigate_and_search",
-  "confidence": 0.95,
-  "parameters": {
-    "site": "youtube.com",
-    "search_query": "cooking tutorials"
-  },
-  "actions": [
-    {
-      "type": "navigate",
-      "url": "https://youtube.com"
-    },
-    {
-      "type": "search",
-      "selector": "input[name='search_query']",
-      "value": "cooking tutorials"
-    },
-    {
-      "type": "submit",
-      "selector": "button[type='submit']"
-    }
-  ]
-}
-```
-
-## Action Grid
-
-The **Action Grid** is a configuration file that defines what the system can do. It's sent to Claude as context to help it understand available capabilities.
-
-### Supported Action Categories
-
-1. **Navigation**
-   - Open URLs
-   - Go back/forward
-   - Refresh page
-   - Close tabs
-
-2. **Search**
-   - Enter text in search fields
-   - Submit searches
-   - Site-specific search (YouTube, Google, etc.)
-
-3. **Interaction**
-   - Click elements
-   - Fill forms
-   - Scroll
-   - Take screenshots
-
-4. **Content**
-   - Read page content
-   - Extract information
-   - Summarize pages
-
-### Action Grid Format
-
-Located in: `config/actions.json`
-
-```json
-{
-  "version": "1.0",
-  "actions": {
-    "navigate": {
-      "description": "Navigate to a URL",
-      "parameters": ["url"],
-      "example": "open google.com"
-    },
-    "search": {
-      "description": "Search on a website",
-      "parameters": ["site", "query"],
-      "example": "search youtube for cats"
-    },
-    "click": {
-      "description": "Click an element",
-      "parameters": ["selector", "text"],
-      "example": "click the login button"
-    }
-  }
-}
-```
-
-## Repository Structure
+## How It Works
 
 ```
-voice-browser-automation/
-├── README.md                    # User-facing documentation
-├── ARCHITECTURE.md              # This document
-├── LICENSE                      # Project license
-├── install.sh                   # One-command installation script
-├── start.sh                     # Launch the assistant
-├── stop.sh                      # Stop the assistant
-│
-├── config/
-│   ├── actions.json            # Action grid definition
-│   ├── settings.yaml           # Configuration (API keys, etc.)
-│   └── settings.example.yaml   # Template for settings
-│
-├── services/
-│   ├── voice-browser.service   # systemd service file
-│   └── setup-service.sh        # Service installation script
-│
-├── src/
-│   ├── main.py                 # Main orchestration loop
-│   ├── wakeword_listener.py    # Wake word detection
-│   ├── audio_capture.py        # Audio recording
-│   ├── cloud_processor.py      # Whisper + Claude integration
-│   ├── browser_executor.py     # Playwright automation
-│   ├── action_parser.py        # JSON parsing and validation
-│   └── utils/
-│       ├── logger.py           # Logging utilities
-│       └── config_loader.py    # Configuration management
-│
-├── tests/
-│   ├── test_wakeword.py
-│   ├── test_audio.py
-│   ├── test_cloud.py
-│   └── test_executor.py
-│
-├── logs/                        # Application logs (gitignored)
-├── requirements.txt             # Python dependencies
-└── .env.example                # Environment variables template
+[Wake Word: "Ok Computer"]
+    ↓
+[Audio Capture]
+    ↓
+[Speech-to-Text (Whisper)]
+    ↓
+[Claude Computer Use API]
+    ├── Takes screenshots
+    ├── Reasons about actions
+    ├── Controls mouse/keyboard
+    └── Executes multi-step tasks
+    ↓
+[Task Complete]
 ```
 
-## Setup and Installation
+## Features
+
+- 🎤 **Wake word activation** - "Ok Computer" triggers listening
+- 🗣️ **Natural language** - Speak commands like you would to a person
+- 👁️ **Visual understanding** - Claude sees your screen and reasons about it
+- 🖱️ **Full computer control** - Mouse, keyboard, and bash commands
+- 🔄 **Multi-step execution** - Handles complex tasks automatically
+- 🐳 **Dockerized** - Runs in safe, isolated environment
+- 🔒 **Privacy-focused** - Only audio after wake word is processed
+
+## Quick Start
 
 ### Prerequisites
 
 - Ubuntu 20.04+ or Debian 11+ (64-bit)
-- Python 3.8+
-- Working microphone
-- Display (screen assumed present)
-- Internet connection
-- API keys for:
-  - OpenAI (Whisper API)
-  - Anthropic (Claude API)
-  - Picovoice (Porcupine wake word)
+- Docker and Docker Compose
+- Microphone
+- Display
+- API Keys:
+  - [Anthropic API key](https://console.anthropic.com/) (Claude)
+  - [OpenAI API key](https://platform.openai.com/) (Whisper)
+  - [Picovoice Access Key](https://console.picovoice.ai/) (Wake word)
 
-### Installation Steps
+### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/voice-browser-automation.git
-cd voice-browser-automation
+git clone https://github.com/andresmascl/scrap-ai-bot.git
+cd scrap-ai-bot
 
-# Run installation script
-./install.sh
+# Initialize submodules (pulls Anthropic's Computer Use Demo)
+git submodule update --init --recursive
 
 # Configure API keys
-cp config/settings.example.yaml config/settings.yaml
-nano config/settings.yaml  # Add your API keys
+cp .env.example .env
+nano .env  # Add your API keys
 
-# Start the service
-./start.sh
+# Build and run
+./install.sh
 ```
 
-### Configuration
+### First Run
+
+```bash
+# Start the service
+./start.sh
+
+# Access the interface
+# VNC viewer: localhost:5900
+# Web interface: http://localhost:6080
+```
+
+Say **"Ok Computer"** followed by your command. The system will:
+1. Capture your voice
+2. Transcribe to text
+3. Send to Claude with screenshot
+4. Execute actions visually
+5. Return to listening
+
+## Project Structure
+
+```
+scrap-ai-bot/
+├── README.md                       # This file
+├── ARCHITECTURE.md                 # Technical architecture
+├── AI_INSTRUCTIONS.md              # Instructions for AI assistants
+├── CONTRIBUTING.md                 # Contribution guidelines
+├── LICENSE                         # AGPL-3.0 license
+├── .env.example                    # Environment variables template
+│
+├── computer-use-demo/              # Anthropic's demo (submodule)
+│   └── [Anthropic's Computer Use implementation]
+│
+├── voice-layer/                    # Voice control additions
+│   ├── __init__.py
+│   ├── wake_word.py               # Porcupine wake word detection
+│   ├── audio_capture.py           # Audio recording
+│   ├── transcription.py           # Whisper API integration
+│   ├── orchestrator.py            # Main coordination loop
+│   └── utils/
+│       ├── logger.py
+│       └── config.py
+│
+├── config/
+│   ├── settings.yaml              # Configuration
+│   └── wake_word.ppn              # Wake word model
+│
+├── docker/
+│   ├── Dockerfile.voice           # Extended Dockerfile
+│   └── docker-compose.yml         # Complete stack
+│
+├── scripts/
+│   ├── install.sh                 # Installation script
+│   ├── start.sh                   # Start services
+│   ├── stop.sh                    # Stop services
+│   └── test_voice.sh              # Test voice pipeline
+│
+└── tests/
+    ├── test_wake_word.py
+    ├── test_audio.py
+    └── test_integration.py
+```
+
+## Configuration
 
 Edit `config/settings.yaml`:
 
 ```yaml
 wake_word:
-  keyword: "hey browser"
+  keyword: "ok computer"
   sensitivity: 0.5
 
 audio:
   sample_rate: 16000
-  record_duration: 5  # seconds
-  silence_detection: true
+  record_seconds: 5
+  silence_threshold: 500
 
-api_keys:
-  openai: "your-openai-key"
-  anthropic: "your-anthropic-key"
-  picovoice: "your-picovoice-key"
+api:
+  anthropic_model: "claude-sonnet-4-20250514"
+  whisper_model: "whisper-1"
 
-browser:
-  headless: false
-  browser_type: "chromium"  # chromium, firefox, webkit
-  
-logging:
-  level: "INFO"
-  file: "logs/voice-browser.log"
+computer_use:
+  display_width: 1024
+  display_height: 768
+  max_steps: 50
 ```
 
-## Development Workflow
+## Development
 
-### For Humans
+### Setup Development Environment
 
-1. Read this document to understand the architecture
-2. Check `README.md` for user instructions
-3. Review `config/actions.json` to understand capabilities
-4. Modify components as needed
-5. Test with `pytest tests/`
-6. Submit PRs with clear descriptions
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
 
-### For AI Coding Assistants
+# Run tests
+pytest tests/
 
-When asked to work on this project:
-
-1. **Understand the flow**: Wake word → Audio → Cloud → JSON → Browser
-2. **Follow the structure**: Keep components in their designated files
-3. **Respect the action grid**: All new capabilities must be added to `actions.json`
-4. **Maintain JSON contract**: Browser executor expects specific JSON format from Claude
-5. **Error handling**: Always wrap cloud API calls and browser actions in try-catch
-6. **Logging**: Use the logger utility for all important events
-7. **Testing**: Write tests for new features
-
-### For LLMs (Like Claude)
-
-When processing voice commands in this system:
-
-1. You receive: `{"transcript": "user's spoken command", "action_grid": {...}}`
-2. You must return valid JSON matching the schema shown above
-3. Only use actions defined in the action_grid
-4. Be specific with selectors (CSS or text-based)
-5. Break complex commands into multiple sequential actions
-6. Return confidence score (0.0-1.0)
-7. If unsure, ask for clarification in the response
-
-## Component Specifications
-
-### 1. Wake Word Listener (`wakeword_listener.py`)
-
-**Purpose**: Continuously listen for wake word, trigger audio capture
-
-**Key Functions**:
-- `start_listening()`: Begin monitoring audio input
-- `on_wake_word_detected()`: Callback when wake word heard
-- `stop_listening()`: Clean shutdown
-
-**Performance Requirements**:
-- CPU usage < 5% when idle
-- Detection latency < 200ms
-- False positive rate < 1%
-
-### 2. Audio Capture (`audio_capture.py`)
-
-**Purpose**: Record audio after wake word detection
-
-**Key Functions**:
-- `capture_audio(duration)`: Record for specified time
-- `detect_silence()`: Stop recording when user stops speaking
-- `save_audio(format)`: Save to temporary file for upload
-
-**Output**: WAV or MP3 file ready for cloud upload
-
-### 3. Cloud Processor (`cloud_processor.py`)
-
-**Purpose**: Handle all cloud API interactions
-
-**Key Functions**:
-- `transcribe_audio(audio_file)`: Send to Whisper API
-- `get_intent(transcript, action_grid)`: Send to Claude API
-- `parse_response(json)`: Validate and return structured data
-
-**Error Handling**: Retry logic, timeout handling, API error messages
-
-### 4. Browser Executor (`browser_executor.py`)
-
-**Purpose**: Execute browser actions from JSON commands
-
-**Key Functions**:
-- `initialize_browser()`: Start Playwright browser
-- `execute_action(action_json)`: Perform single action
-- `execute_sequence(actions_list)`: Perform multiple actions in order
-- `take_screenshot()`: Capture visual feedback
-- `close_browser()`: Clean shutdown
-
-**Safety**: Validate all actions, sanitize inputs, respect timeouts
-
-### 5. Main Orchestrator (`main.py`)
-
-**Purpose**: Coordinate all components in main loop
-
-**Main Loop**:
-```python
-while running:
-    wait_for_wake_word()
-    audio = capture_audio()
-    transcript = transcribe(audio)
-    action_json = get_intent(transcript)
-    execute_in_browser(action_json)
-    provide_feedback()
+# Lint code
+flake8 voice-layer/
+black voice-layer/
 ```
 
-## Security Considerations
+### Architecture Overview
 
-1. **API Keys**: Never commit to git, use environment variables
-2. **Input Validation**: Sanitize all user inputs before browser execution
-3. **Action Restrictions**: Limit dangerous operations (file access, system commands)
-4. **Rate Limiting**: Prevent API abuse
-5. **Sandboxing**: Consider running browser in isolated environment
+Scrap AI Bot is built on three layers:
 
-## Performance Targets
+1. **Voice Layer** (this project) - Wake word, audio capture, transcription
+2. **AI Layer** (Anthropic's Computer Use) - Vision, reasoning, tool execution
+3. **System Layer** (Docker + X11) - Safe execution environment
 
-- Wake word detection: < 200ms latency
-- Audio capture: 3-5 seconds typical
-- Cloud processing: 2-4 seconds total
-- Browser action: 1-3 seconds per action
-- Total response time: < 10 seconds for simple commands
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
 
-## Future Enhancements
+### For AI Assistants
 
-- [ ] Multi-language support
+If you're an AI coding assistant working on this project, please read [AI_INSTRUCTIONS.md](AI_INSTRUCTIONS.md) for specific guidance on how components interact and coding standards.
+
+## Roadmap
+
+### Current Status: Alpha
+
+- [x] Basic voice control integration
+- [x] Wake word detection
+- [x] Computer Use API integration
+- [ ] Stable multi-step execution
+- [ ] Error recovery
+- [ ] Audio feedback (TTS)
+
+### Planned Features
+
 - [ ] Custom wake word training
-- [ ] Voice feedback (TTS responses)
-- [ ] Command history and recall
-- [ ] Multi-tab management
-- [ ] Screenshot analysis
-- [ ] Macro recording
-- [ ] Headless mode toggle
-- [ ] Mobile device support
-- [ ] Plugin system for extensions
+- [ ] Task templates and macros
+- [ ] Voice feedback with TTS
+- [ ] Multi-language support
+- [ ] Performance optimizations
+- [ ] Mobile device control
+- [ ] Plugin system
 
-## Testing Strategy
+### Commercial Features (Future)
 
-### Unit Tests
-- Test each component independently
-- Mock cloud APIs for faster testing
-- Validate JSON parsing and generation
+- Premium recommendation engine
+- Team collaboration features
+- Enterprise security and compliance
+- Managed hosting service
+- Priority support
 
-### Integration Tests
-- Test full pipeline with real APIs (in CI/CD)
-- Browser automation scenarios
-- Error recovery paths
+## Security & Privacy
 
-### Manual Testing
-- Real-world voice commands
-- Different accents and speech patterns
-- Edge cases and error conditions
+- **Local wake word detection** - No audio sent to cloud until activated
+- **Sandboxed execution** - Runs in isolated Docker container
+- **API key security** - Keys stored in environment variables only
+- **Audit logging** - All actions logged for review
+
+⚠️ **Warning**: This gives AI control over your computer. Review all actions and use in controlled environments only.
+
+## Known Limitations
+
+- Requires display (headless mode not yet supported)
+- English language only (currently)
+- High API costs for extended use
+- Occasional misinterpretation of visual elements
+- Requires stable internet connection
 
 ## Troubleshooting
 
-### Common Issues
+### Wake word not detecting
 
-**Wake word not detecting**
-- Check microphone permissions
-- Adjust sensitivity in config
-- Verify Porcupine API key
+```bash
+# Test microphone
+arecord -l
 
-**Cloud API errors**
-- Verify API keys are correct
-- Check internet connection
-- Review rate limits
+# Adjust sensitivity in config/settings.yaml
+wake_word:
+  sensitivity: 0.7  # Increase for better detection
+```
 
-**Browser actions failing**
-- Check selectors are still valid
-- Verify website hasn't changed
-- Review Playwright logs
+### Computer Use actions failing
+
+```bash
+# Check Docker container logs
+docker logs scrap-ai-bot
+
+# Verify API keys
+./scripts/test_voice.sh
+```
+
+### Audio quality issues
+
+```bash
+# Test audio capture
+python -m voice-layer.audio_capture --test
+
+# Check sample rate matches your microphone
+pactl list sources
+```
+
+See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for more solutions.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Write/update tests
-5. Update documentation
-6. Submit a pull request
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting PRs.
+
+Key areas needing help:
+- Error recovery and resilience
+- Performance optimization
+- Additional language support
+- Documentation improvements
 
 ## License
 
-Mine
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
-## Contact
+- ✅ Free for personal and non-commercial use
+- ✅ Modifications must be open-sourced
+- ✅ Network use triggers source disclosure
+- 📧 Commercial licensing available - contact: andres@scrap-ai-bot.dev
 
-None yet
+See [LICENSE](LICENSE) for full text.
+
+## Commercial Licensing
+
+For commercial use cases that cannot comply with AGPL-3.0 (closed-source products, SaaS offerings, etc.), commercial licenses are available.
+
+**Contact**: andres@scrap-ai-bot.dev
+
+## Acknowledgments
+
+Built on top of:
+- [Anthropic's Computer Use Demo](https://github.com/anthropics/claude-quickstarts/tree/main/computer-use-demo)
+- [Picovoice Porcupine](https://github.com/Picovoice/porcupine) for wake word detection
+- [OpenAI Whisper](https://github.com/openai/whisper) for speech recognition
+
+## Support
+
+- 📖 [Documentation](https://github.com/andresmascl/scrap-ai-bot/wiki)
+- 🐛 [Issue Tracker](https://github.com/andresmascl/scrap-ai-bot/issues)
+- 💬 [Discussions](https://github.com/andresmascl/scrap-ai-bot/discussions)
+- 📧 Email: support@scrap-ai-bot.dev
+
+## Star History
+
+If you find this project useful, please consider starring it on GitHub!
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: December 2025  
-**Maintained By**: Andresm@
+**Made with ❤️ by [andresmascl](https://github.com/andresmascl)**
+
+**Status**: Alpha - Not recommended for production use
