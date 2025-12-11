@@ -4,3 +4,8 @@ pyaudio
 python-dotenv
 sounddevice
 numpy
+soundfile
+pynput
+mss
+Pillow
+pyautogui

@@ -1,4 +1,4 @@
 #!/bin/bash
 source venv/bin/activate
-pip install --upgrade -r requirements.txt
-echo "Updated."
+pip install --upgrade -r utilities/requirements.txt
+echo "[Scrapbot] Updated."

@@ -1,12 +1,9 @@
-
 import sounddevice as sd
 import numpy as np
 import queue
-import time
 from whisper import transcribe_and_forward
 
 WAKE_WORD = "parrot"
-
 audio_q = queue.Queue()
 
 def audio_callback(indata, frames, time, status):
@@ -17,29 +14,30 @@ def listen_wake_word():
 
     sd.InputStream(callback=audio_callback, channels=1, samplerate=16000).start()
 
-    buffer = np.zeros(16000 * 3)  # 3 seconds sliding window
+    buffer = np.zeros(16000 * 3)
 
     while True:
         data = audio_q.get()
         data = data.reshape(-1)
-
         buffer = np.concatenate([buffer[len(data):], data])
 
         volume = np.linalg.norm(buffer) / len(buffer)
 
-        if volume > 0.08:  # ruido → posible voz
-            print("🔊 Possible speech detected, capturing...")
+        if volume > 0.08:
+            print("🔊 Voice detected… recording")
             record_voice_command()
             break
 
 def record_voice_command():
-    print("🎙 Recording 4 seconds of audio...")
+    import sounddevice as sd
+    print("🎙 Recording audio...")
     duration = 4
     fs = 16000
     audio = sd.rec(int(duration * fs), samplerate=fs, channels=1)
     sd.wait()
 
     audio_path = "last_command.wav"
+    import numpy as np
     np.save(audio_path, audio)
 
     print("📩 Sending to Whisper…")

@@ -31,6 +31,8 @@ scrapbot.ia
   |____update.sh
 
 
+
+
 ---
 
 ## Instalación
@@ -47,7 +49,7 @@ chmod +x utilities/*.sh
 ```bash
 source venv/bin/activate
 ./utilities/main.sh
-```
+```c
 
 Cuando digas "parrot" se activa la escucha, captura tu comando y ejecuta la acción con Claude Computer Use.
 
