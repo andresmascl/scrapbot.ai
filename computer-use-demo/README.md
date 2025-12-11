@@ -1,4 +1,4 @@
-Install Requirements
+## Install Requirements
 
 Open a terminal:
 
@@ -7,9 +7,15 @@ pip install -r requirements.txt
 
 export ANTHROPIC_API_KEY="your-api-key-here"
 
-. Run the demo exactly like Anthropic intended
-python3 main.py
+## Run the demo exactly like Anthropic intended
+Make executable:
 
+chmod +x run.sh
+
+
+Now you can run the full demo with:
+
+./run.sh
 You should see:
 
 Starting Claude computer use demo...
