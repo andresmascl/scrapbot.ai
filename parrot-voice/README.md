@@ -37,19 +37,13 @@ sudo apt install -y python3-pip portaudio19-dev
 
 ## Installation
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/YOUR_USER/parrot-voice.git
-cd parrot-voice
-```
-
-### 2. Create and activate a virtual environment (recommended)
+### 1. Create and activate a virtual environment (recommended)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Python dependencies
+### 2. Install Python dependencies
 ```bash
 pip install -r requirements.txt
 ```
