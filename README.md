@@ -67,26 +67,26 @@ Scrap AI Bot adds voice control to [Anthropic's Computer Use Demo](https://githu
 git clone https://github.com/andresmascl/scrap-ai-bot.git
 cd scrap-ai-bot
 
-# Initialize submodules (pulls Anthropic's Computer Use Demo)
-git submodule update --init --recursive
+# Run the installation script (handles everything)
+chmod +x scripts/*.sh
+./scripts/install.sh
 
 # Configure API keys
-cp .env.example .env
-nano .env  # Add your API keys
-
-# Build and run
-./install.sh
+nano .env  # Add your API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY, PICOVOICE_ACCESS_KEY)
 ```
 
 ### First Run
 
 ```bash
 # Start the service
-./start.sh
+./scripts/start.sh
 
 # Access the interface
 # VNC viewer: localhost:5900
 # Web interface: http://localhost:6080
+
+# Stop the service
+./scripts/stop.sh
 ```
 
 Say **"Ok Computer"** followed by your command. The system will:
@@ -104,8 +104,11 @@ scrap-ai-bot/
 ├── ARCHITECTURE.md                 # Technical architecture
 ├── AI_INSTRUCTIONS.md              # Instructions for AI assistants
 ├── CONTRIBUTING.md                 # Contribution guidelines
+├── CHANGELOG.md                    # Version history
 ├── LICENSE                         # AGPL-3.0 license
 ├── .env.example                    # Environment variables template
+├── .gitignore                      # Git ignore patterns
+├── .gitmodules                     # Git submodule configuration
 │
 ├── computer-use-demo/              # Anthropic's demo (submodule)
 │   └── [Anthropic's Computer Use implementation]
@@ -126,7 +129,9 @@ scrap-ai-bot/
 │
 ├── docker/
 │   ├── Dockerfile.voice           # Extended Dockerfile
-│   └── docker-compose.yml         # Complete stack
+│   ├── docker-compose.yml         # Container orchestration
+│   ├── entrypoint.sh              # Container startup script
+│   └── pulse-client.conf          # PulseAudio configuration
 │
 ├── scripts/
 │   ├── install.sh                 # Installation script
@@ -321,7 +326,5 @@ Built on top of:
 If you find this project useful, please consider starring it on GitHub!
 
 ---
-
-**Made with ❤️ by [andresmascl](https://github.com/andresmascl)**
 
 **Status**: Alpha - Not recommended for production use
