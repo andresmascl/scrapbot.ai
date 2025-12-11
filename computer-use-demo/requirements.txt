@@ -1,1 +1,11 @@
 
+Pillow
+pynput
+pyperclip
+opencv-python
+numpy
+mss
+pyautogui
+anthropic
+tiktoken
+click
