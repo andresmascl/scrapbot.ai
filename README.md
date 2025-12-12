@@ -1,124 +1,128 @@
-# 🎤 Local Voice Assistant (Wake Word + Whisper.cpp + Piper TTS)
+# 🎤 Local Voice Assistant (Push-to-Talk + Cloud STT + Local Intent Execution)
 **This version contains ONLY the Makefile workflow + the project filemap.**
 
-Everything—venv, dependencies, Whisper.cpp build, model downloads, and running—is done via the **Makefile**.
+This is the **latest simplified architecture**:
+
+- ❌ No wake word
+- ❌ No Whisper.cpp
+- ❌ No VAD
+- ❌ No Piper
+- ✅ Push-to-talk via **keyboard shortcut**
+- ✅ **Cloud STT (Google Speech-to-Text)**
+- ✅ **Local intent guessing**
+- ✅ **Local execution (e.g. Brave automation)**
+
+Everything—**virtualenv, dependencies, and running**—is handled via the **Makefile**.
 
 ---
 
 # 📁 Filemap
-
-```
+```bash
 voicebot/
 │── Makefile
-│── main.py
-│── wakeword.py
-│── stt.py
-│── tts.py
-│── vad.py
+│── main.py # Push-to-talk → Google STT → local intent execution
 │
-├── whisper.cpp/               # auto-cloned + compiled
-│   └── (build files)
+├── credentials/
+│ └── google.json # Google service account (not committed)
 │
-├── models/
-│   ├── ggml-base-q5_1.bin     # Whisper.cpp model
-│   ├── openwakeword.tflite    # Wake word model
-│   └── piper/
-│       ├── en_US-amy-low.onnx
-│       └── en_US-amy-low.onnx.json
-│
-└── venv/                      # virtual environment (created by Makefile)
+└── venv/ # virtual environment (created by Makefile)
 ```
+
 
 ---
 
 # 🛠 Makefile Instructions
 
 Below is the **full Makefile-driven workflow**.  
-You do **NOT** manually install anything — the Makefile does it all.
+You do **NOT** manually manage the virtual environment.
 
 ---
 
-## ✅ 1. Setup (ALL dependencies, venv, models, whisper.cpp)
+## ✅ 1. Setup (venv + Python dependencies)
 
 ```bash
 make setup
 ```
-
 This command:
 
-- Creates a Python virtual environment (`venv/`)
-- Installs Python dependencies
-- Installs system libs (PortAudio, build tools)
-- Clones & compiles Whisper.cpp
-- Downloads:
-  - Whisper Base-Q5 model
-  - Wakeword model
-  - Piper voice model
-- Ensures microphone permissions
-- Ensures `piper` is available
+Creates a Python virtual environment (venv/)
 
-This installs everything needed in a single step.
+Installs required Python packages:
 
----
+sounddevice
 
-## 🎤 2. Run the assistant
+soundfile
 
+numpy
+
+pynput
+
+google-cloud-speech
+
+Verifies basic audio support
+
+⚠️ System audio libraries (PortAudio, ALSA) must already be present on Linux.
+
+🎤 2. Run the assistant
 ```bash
 make run
 ```
 
-This internally runs:
-
-```
+Internally runs:
+```bash
 source venv/bin/activate && python3 main.py
 ```
 
-You will hear:
+You will see:
 
-```
-System ready. Say hey computer.
-```
+🟢 Ready. Hold Super + Alt + Space to speak.
 
----
+Runtime behavior
 
-## 🔧 3. Build Whisper.cpp manually
+Hold Super (Windows key) + Alt + Space
 
+Speak while holding
+
+Release keys → audio is sent to Google STT
+
+Text is returned
+
+Intent is guessed locally
+
+Local action is executed
+
+🔑 3. Google Credentials (Required)
+
+You must provide a Google Cloud Speech-to-Text service account:
+
+credentials/google.json
+
+
+And ensure this path is used in main.py:
 ```bash
-make whisper
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials/google.json"
 ```
 
----
+Speech-to-Text must be enabled in the Google Cloud project.
 
-## 📦 4. Download all models only
-
-```bash
-make models
-```
-
-Downloads:
-
-- `ggml-base-q5_1.bin`
-- `openwakeword.tflite`
-- `piper` ONNX voice model
-
----
-
-## 🧽 5. Clean build artifacts (keeps models)
-
+🧽 4. Clean (remove venv only)
 ```bash
 make clean
 ```
 
----
+Removes:
 
-## 💥 6. Full reset (remove venv + whisper.cpp + models)
+venv/
 
+
+Keeps source files and credentials.
+
+💥 5. Full reset (fresh clone state)
 ```bash
 make distclean
 ```
 
-This returns the repo to a “fresh clone” state.
+Removes:
+venv/
 
----
-
-## 🎉 7. Ready!
+Any generated audio files
