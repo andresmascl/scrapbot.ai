@@ -4,14 +4,14 @@
 
 It combines **Rhasspy** for offline voice processing and **Playwright** for controlling a **real, headful browser with your personal user session**, enabling voice-driven interaction with services like YouTube, Gmail, and local applications.
 
-Alekz is intentionally minimal, explicit, and hackable.
+scrapbot is intentionally minimal, explicit, and hackable.
 
 ---
 
-## What Alekz Does (Today)
+## What scrapbot Does (Today)
 
 - Runs **locally on Linux** (PC, NUC, or laptop)
-- Listens for a wake word: **"Alezo"**
+- Listens for a wake word: **"scrapbot"**
 - Converts voice → text using Rhasspy
 - Translates voice intents into actions
 - Controls a **real browser window** (Brave / Chrome / Firefox)
@@ -20,21 +20,18 @@ Alekz is intentionally minimal, explicit, and hackable.
 - Automates websites like:
   - YouTube (search, play, navigate)
   - Gmail (read / open emails — WIP)
-- Controls local media (VLC)
 
 Everything runs on your machine. No cloud dependency is required.
 
 ---
 
-## What Alekz Explicitly Does NOT Do
+## What scrapbot Explicitly Does NOT Do
 
-- ❌ No cloud-based voice processing (unless you configure it)
-- ❌ No fake or ephemeral browser profiles
 - ❌ No hidden automation behind APIs you don’t control
 - ❌ No smart-home vendor lock-in
 - ❌ No attempt to replace full Alexa / Google Assistant ecosystems
 
-Alekz is **not** a consumer product. It is a **personal automation platform**.
+scrapbot.io is **not** a consumer product. It is a **personal automation platform**.
 
 ---
 
@@ -57,7 +54,13 @@ Voice (Mic)
    ↓
 Rhasspy
    ↓  (intent)
-Alekz
+stt
+   ↓
+intent detection
+   ↓
+return json
+   ↓
+tts
    ↓
 Browser Controller (Playwright)
    ↓
@@ -87,10 +90,10 @@ See [`PROJECT_STRUCTURE.md`](./PROJECT_STRUCTURE.md) for the full architectural 
 > This describes the *intended* usage flow. Setup scripts may evolve.
 
 1. Start Rhasspy
-2. Start Alekz services
+2. Start scrapbot services
 3. Say:
    
-   **“Alezo, play lo-fi music on YouTube”**
+   **“scrapbot, play lo-fi music on YouTube”**
 
 4. A real browser window opens
 5. YouTube loads using your logged-in account
@@ -132,4 +135,4 @@ Open-source. License to be defined.
 - People who want voice control **without giving up control**
 
 If you’re looking for convenience, buy an Alexa.
-If you’re looking for ownership, build Alekz.
+If you’re looking for ownership, build Scrapbot.ai.
