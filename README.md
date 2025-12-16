@@ -116,7 +116,7 @@ Ok House is a **voice processing and intent inference engine**, not a full Alexa
 
 ## License
 
-Open-source. License to be defined.
+You are welcome to fork this project
 
 ---
 
@@ -129,4 +129,3 @@ Open-source. License to be defined.
 
 If you want a consumer assistant, buy one.
 If you want to understand and control the pipeline, deploy Ok House.
-
