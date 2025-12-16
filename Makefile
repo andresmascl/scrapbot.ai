@@ -13,7 +13,7 @@ venv:
 # Install dependencies
 # -------------------------
 install: venv
-	$(PIP) install \
+	$(PIP) install -r \
 		requirements.txt
 
 # -------------------------
