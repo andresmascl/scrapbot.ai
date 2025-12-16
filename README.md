@@ -1,12 +1,12 @@
-# Hey Computer
+# Ok House
 
-**Hey Computer** is a local-first, Linux-based voice assistant focused on **continuous listening**, **wake word detection**, **speech understanding**, and **voice feedback**, designed to run entirely on an old laptop or low-resource machine.
+**Ok House** is a local-first, Linux-based voice assistant focused on **continuous listening**, **wake word detection**, **speech understanding**, and **voice feedback**, designed to run entirely on an old laptop or low-resource machine.
 
 The project is intentionally minimal and modular, with a strong emphasis on **real-time audio processing**, **AI-driven intent recognition**, and **developer ownership**.
 
 ---
 
-## What Hey Computer Does
+## What Ok House Does
 
 - Continuously listens to microphone input
 - Detects a custom wake word ("Alezo") using semantic embeddings
@@ -20,7 +20,7 @@ All core logic is designed to be **local-first** and runnable on commodity hardw
 
 ---
 
-## What Hey Computer Does NOT Do (yet)
+## What Ok House Does NOT Do (yet)
 
 - ❌ Browser automation
 - ❌ Smart-home integrations
@@ -28,7 +28,7 @@ All core logic is designed to be **local-first** and runnable on commodity hardw
 - ❌ No always-on cloud dependency
 - ❌ Consumer assistant UI
 
-Hey Computer is a **voice processing and intent inference engine**, not a full Alexa replacement (yet).
+Ok House is a **voice processing and intent inference engine**, not a full Alexa replacement (yet).
 
 ---
 
@@ -73,7 +73,7 @@ Hey Computer is a **voice processing and intent inference engine**, not a full A
 1. System continuously listens to audio input
 2. User says:
    
-   **"Alezo, what time is it"**
+   **"Ok House, what time is it"**
 
 3. Wake word is detected via embeddings
 4. Speech is recorded until silence is detected
@@ -128,5 +128,5 @@ Open-source. License to be defined.
 - Developers interested in real-time audio systems
 
 If you want a consumer assistant, buy one.
-If you want to understand and control the pipeline, build Hey Computer.
+If you want to understand and control the pipeline, build Ok House.
 
