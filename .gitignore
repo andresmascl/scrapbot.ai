@@ -1,3 +1,5 @@
-.venv
+.env
+creds/*.json
 recording_*
-__pycache__/*
+configs/__pycache__/*
+keys/*

@@ -7,6 +7,8 @@ The project is intentionally minimal and modular, with a strong emphasis on **re
 ---
 
 ### Usage
+make help
+
 make install
 
 make run
@@ -18,7 +20,7 @@ make clean
 ## What Ok House Does
 
 - Continuously listens to microphone input
-- Detects a custom wake word ("hey mycroft") using semantic embeddings
+- Detects a custom wake word ("hey mycroft")
 - Records speech and waits for silence
 - Converts speech to text (STT)
 - Infers user intent from a predefined intent list

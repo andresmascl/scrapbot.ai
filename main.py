@@ -1,43 +1,62 @@
-# main.py
 import asyncio
+import signal
+
 import pyaudio
+from dotenv import load_dotenv
+
 from listener import listen
+from configs.listener_config import (
+    AUDIO_RATE,
+    CHANNELS,
+    FRAME_MS,
+)
+import reasoner
 
 # --------------------
-# Audio Device
+# Bootstrap
 # --------------------
-INPUT_DEVICE_INDEX = 3
-RATE = 16000
-CHANNELS = 1
-FRAME_MS = 30
-FRAME_SIZE = int(RATE * FRAME_MS / 1000)
+load_dotenv()  # load .env ONCE, at entrypoint
 
-def main():
-    p = None
+FRAME_SIZE = int(AUDIO_RATE * FRAME_MS / 1000)
+
+# --------------------
+# Audio callback
+# --------------------
+async def handle_audio(wav_path: str) -> None:
+    """Send recorded audio to the reasoner pipeline."""
+    print(f"🧠 Sending audio to reasoner: {wav_path}")
+    try:
+        result = await reasoner.process_audio(wav_path)
+        print(f"💡 Reasoner result: {result}")
+    except Exception as exc:
+        print(f"⚠️ Error processing audio: {exc}")
+
+# --------------------
+# Main
+# --------------------
+def main() -> None:
+    p = pyaudio.PyAudio()
     stream = None
 
     try:
-        p = pyaudio.PyAudio()
         stream = p.open(
             format=pyaudio.paInt16,
             channels=CHANNELS,
-            rate=RATE,
+            rate=AUDIO_RATE,
             input=True,
-            input_device_index=INPUT_DEVICE_INDEX,
             frames_per_buffer=FRAME_SIZE,
         )
 
-        asyncio.run(listen(stream))
+        asyncio.run(listen(stream, on_audio_recorded=handle_audio))
 
     except KeyboardInterrupt:
-        print("\nStopping…")
+        print("\n🛑 Interrupted by user")
 
     finally:
-        if stream:
+        if stream is not None:
             stream.stop_stream()
             stream.close()
-        if p:
-            p.terminate()
+        p.terminate()
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-# listener.py
 import asyncio
 import numpy as np
 import wave
@@ -46,10 +45,13 @@ def save_wav(frames, filename):
 # --------------------
 # Public API
 # --------------------
-async def listen(stream):
+async def listen(stream, on_audio_recorded=None):
     """
     Continuous wake-word listener.
     Blocks forever until cancelled.
+
+    :param stream: PyAudio input stream
+    :param on_audio_recorded: optional async callback called with WAV path
     """
     print("🎙️ Always listening (wake word + recording)…")
 
@@ -100,11 +102,16 @@ async def listen(stream):
                 silence_count = 0
 
             if silence_count >= SILENCE_FRAMES_TO_STOP:
-                filename = f"recording_{int(time.time())}.wav"
+                filename = f"/tmp/recording_{int(time.time())}.wav"
+
                 save_wav(audio_buffer, filename)
 
                 print(f"\n💾 Audio saved: {filename}")
                 print("🎙️ Back to wake word listening…")
+
+                # call the async callback if provided
+                if on_audio_recorded is not None:
+                    await on_audio_recorded(filename)
 
                 recording = False
                 audio_buffer.clear()

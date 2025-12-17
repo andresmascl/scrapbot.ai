@@ -13,6 +13,17 @@ sentence-transformers
 # PyTorch CPU index
 --extra-index-url https://download.pytorch.org/whl/cpu
 
+# Packaging
 setuptools<81
 openwakeword
 onnxruntime
+
+# Google Cloud / Vertex AI
+google-cloud-speech
+google-cloud-aiplatform
+google-auth
+google-auth-oauthlib
+
+
+python-dotenv>=1.0.0
+
