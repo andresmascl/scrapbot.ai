@@ -1,73 +1,62 @@
-from google.cloud import speech_v1p1beta1 as speech
-import vertexai
-from vertexai.generative_models import GenerativeModel
-from configs.reasoner_config import (
-	speech_client,
-	MODEL_NAME,
-)
+# reasoner.py
+import os
+import asyncio
+from google.cloud.speech_v2.types import cloud_speech
+# Import the ALREADY initialized client from config
+from config import speech_client, PROJECT_ID, REGION
 
-# --------------------
-# STT
-# --------------------
-async def transcribe_audio(wav_path: str) -> str:
-	"""
-	Transcribe a local WAV file using Google Speech-to-Text.
-	"""
-	with open(wav_path, "rb") as f:
-		content = f.read()
+async def transcribe_audio(wav_path: str):
+    if not os.path.exists(wav_path):
+        print(f"⚠️ File not found: {wav_path}")
+        return "", 0.0
 
-	audio = speech.RecognitionAudio(content=content)
+    try:
+        with open(wav_path, "rb") as f:
+            audio_content = f.read()
 
-	config = speech.RecognitionConfig(
-		encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-		sample_rate_hertz=16000,
-		language_code="es-CL",
-	)
+        # The V2 Recognizer path
+        recognizer_path = f"projects/{PROJECT_ID}/locations/{REGION}/recognizers/_"
 
-	response = speech_client.recognize(
-		config=config,
-		audio=audio,
-	)
+        # MATCHING THE CURL SUCCESS: 
+        # 1. Single language code 
+        # 2. auto_decoding_config (required for V2 regional)
+        config = cloud_speech.RecognitionConfig(
+			model="chirp_3",  # Updated from chirp_2
+			language_codes=["es-US"], 
+			auto_decoding_config=cloud_speech.AutoDetectDecodingConfig(),
+			features=cloud_speech.RecognitionFeatures(
+				enable_automatic_punctuation=True,
+			),
+		)
 
-	return " ".join(
-		result.alternatives[0].transcript
-		for result in response.results
-	)
+        request = cloud_speech.RecognizeRequest(
+            recognizer=recognizer_path,
+            config=config,
+            content=audio_content,
+        )
 
-# --------------------
-# LLM Reasoning
-# --------------------
-async def reason_text(text: str) -> str:
-    model = GenerativeModel(MODEL_NAME)
+        print(f"📡 Sending audio to Chirp 3 ({REGION})...")
+        
+        # Use a shorter timeout to catch hangs faster
+        # asyncio.to_thread is correct for blocking gRPC calls
+        response = await asyncio.wait_for(
+            asyncio.to_thread(speech_client.recognize, request=request),
+            timeout=10.0 
+        )
 
-    prompt = (
-        "Extract intent and entities from the following text "
-        "and return JSON only.\n\n"
-        f"Text: {text}"
-    )
+        if not response.results:
+            return "", 0.0
 
-    response = model.generate_content(
-        prompt,
-        generation_config={
-            "max_output_tokens": 256,
-            "temperature": 0.2,
-        },
-    )
+        result = response.results[0]
+        transcript = result.alternatives[0].transcript
+        confidence = result.alternatives[0].confidence * 100
+        
+        print(f"✅ Success: {transcript}")
+        return transcript, confidence
 
-    return response.text
-
-# --------------------
-# Pipeline
-# --------------------
-async def process_audio(wav_path: str) -> str:
-    """
-    Full pipeline:
-    WAV → Speech-to-Text → LLM reasoning
-    """
-    transcript = await transcribe_audio(wav_path)
-    print(f"📝 Transcript: {transcript}")
-
-    reasoning = await reason_text(transcript)
-    print(f"🤖 Reasoning result:\n{reasoning}")
-
-    return reasoning
+    except asyncio.TimeoutError:
+        print("🛑 STT Timeout: The gRPC connection is likely blocked by a firewall or proxy.")
+        return "TIMEOUT_ERROR", 0.0
+    except Exception as e:
+        print(f"❌ STT V2 Error: {e}")
+        return "", 0.0

@@ -172,9 +172,14 @@ This approach ensures consistent behavior across different environments.
 Core pipeline defined. APIs and interfaces may evolve.
 
 **Todo:**
+- Add sound to indicate it has detected the wake word
+- Add sound to indicate it's sending the audio to Google STT
+- System can ask for user's reiteration when unsure
+- Intent library
 - Browser control automation
 - Custom wake word training
-- Extended intent library
+- Audio stream instead of audio file to make it go faster ⚡
+
 
 ---
 

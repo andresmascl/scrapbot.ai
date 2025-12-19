@@ -4,9 +4,7 @@ import pyaudio
 from dotenv import load_dotenv
 
 from listener import listen, FRAME_SIZE
-from configs.listener_config import (
-    CHANNELS,
-)
+from config import CHANNELS
 
 import reasoner
 
@@ -18,12 +16,15 @@ load_dotenv()
 # --------------------
 # Audio callback
 # --------------------
+# main.py
+
 async def handle_audio(wav_path: str) -> None:
     """Send recorded audio to the reasoner pipeline."""
     print(f"🧠 Sending audio to reasoner: {wav_path}")
     try:
-        result = await reasoner.process_audio(wav_path)
-        print(f"💡 Reasoner result: {result}")
+        # CHANGE THIS: from process_audio to transcribe_audio
+        result, confidence = await reasoner.transcribe_audio(wav_path) 
+        print(f"💡 Reasoner result: [{confidence:.1f}%] {result}")
     except Exception as exc:
         print(f"⚠️ Error processing audio: {exc}")
 
@@ -44,10 +45,11 @@ def main() -> None:
             native_rate = 44100  # Standard fallback
             print(f"⚠️ Could not detect native rate, falling back to {native_rate}Hz. Error: {e}")
 
+        # Open stream using constants from config.py
         stream = p.open(
             format=pyaudio.paInt16,
             channels=CHANNELS,
-            rate=native_rate,  # Open at native hardware rate
+            rate=native_rate,  
             input=True,
             frames_per_buffer=FRAME_SIZE,
         )
@@ -58,11 +60,15 @@ def main() -> None:
     except KeyboardInterrupt:
         print("\n🛑 Interrupted by user")
     except Exception as e:
+        # Log actual error details for easier debugging
+        import traceback
+        traceback.print_exc()
         print(f"❌ Failed to initialize audio: {e}")
 
     finally:
         if stream is not None:
-            stream.stop_stream()
+            if stream.is_active():
+                stream.stop_stream()
             stream.close()
         p.terminate()
 

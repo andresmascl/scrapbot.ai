@@ -1,9 +1,9 @@
-# --- Index for CPU-only Torch (Must be at the top) ---
+# --- Index for CPU-only Torch ---
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # --- Audio Core ---
 pyaudio
-numpy
+numpy>=1.24.0
 silero-vad
 
 # --- AI / Machine Learning (CPU Optimized) ---
@@ -13,10 +13,10 @@ sentence-transformers
 openwakeword
 onnxruntime
 
-# --- Google Cloud & Vertex AI ---
-google-cloud-speech
-google-cloud-aiplatform
-google-auth
+# --- Google Gen AI SDKs ---
+google-genai>=0.1.0
+google-cloud-speech>=2.34.0
+google-auth>=2.30.0
 google-auth-oauthlib
 
 # --- Utilities ---
