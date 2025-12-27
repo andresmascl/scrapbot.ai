@@ -6,7 +6,7 @@ The project is intentionally minimal and modular, with a strong emphasis on **re
 
 
 
-## Instructions For Codingn Agents:  
+## Instructions For Coding Agents:  
 If you're **Coding Agent** working for this project, refer to [AGENTS.md](./AGENTS.md) before reading below information.
 
 ## Quick Start
