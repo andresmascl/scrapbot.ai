@@ -22,26 +22,24 @@
 ```json
 {
 	"intent": {
-		"action": {
-			"type": "string",
-			"description": "Identifier of the Requested Action or Reasoning Task",
-			"required": true
-			},
-		"filter": {
-			"type": "string",
-			"description": "Filter Term to be Applied Before Executing the Action",
-			"required": true
-			},    
-		"feedback": {
-			"type": "string",
-			"description": "Text to be Transformed to Audio and Played Back to the User as Feedback Response or as Part of the Action Confirmation",
-			"required": true
-			},
-		"confidence": {
-			"type": "float",
-			"description": "Estimated Certainty of the Inferred Intent Prediction in a 0 to 1 Range",
-			"required": true
-			}
+		"type": "string",
+		"description": "Identifier of the Requested Action or Reasoning Task (e.g. play_youtube)",
+		"required": true
+	},
+	"filter": {
+		"type": "string",
+		"description": "Filter Term to be Applied Before Executing the Action",
+		"required": true
+	},
+	"feedback": {
+		"type": "string",
+		"description": "Text to be Transformed to Audio and Played Back to the User as Feedback Response or as Part of the Action Confirmation",
+		"required": true
+	},
+	"confidence": {
+		"type": "float",
+		"description": "Estimated Certainty of the Inferred Intent Prediction in a 0 to 1 Range",
+		"required": true
 	}
 }
 ```

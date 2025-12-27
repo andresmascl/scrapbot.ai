@@ -22,8 +22,9 @@ make shell     # Open terminal inside container
 make clean     # Remove image and cached volumes
 ```
 
+## Features:
 
-## What Scrapbot.ai Does
+### What Scrapbot.ai Does
 
 - Continuously listens to microphone input
 - Detects a custom wake word ("hey mycroft")
@@ -34,17 +35,14 @@ make clean     # Remove image and cached volumes
 - Replies to the user using local neural text-to-speech (TTS)
 
 
-## What Scrapbot.ai Does NOT Do (yet)
+### What Scrapbot.ai Does NOT Do (yet)
 
 - Browser automation
 - Custom Scrapbot.ai wakeword
 - Smart-home integrations
-- Mobile app
-- Always-on cloud dependency
-- Consumer assistant UI
+- Mobile app to serve over LAN
 
-Scrapbot.ai is a **voice processing and intent inference engine** (for now), not a full Alexa replacement.
-
+To see an updated list of featuers see [CHANGELOG.md](./CHANGELOG.md)
 
 
 ## Voice Processing Pipeline
