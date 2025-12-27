@@ -1,10 +1,21 @@
 # Scrapbot.ai
 
-**Scrapbot.ai** is a local-first, Linux-based voice assistant focused on **continuous listening**, **wake word detection**, **speech understanding**, and **voice feedback**, designed to run entirely on an old laptop or low-resource machine.
+**Scrapbot.ai** is a local-first, Linux-based voice assistant with cloud LLM support focused on **continuous listening**, **wake word detection**, **speech stop detection**, **speech understanding**, **intent detection**, **General Query Replies**, **TTS Transformation**, and **Local Browser Automation** designed to run entirely on old laptops, and Dockerized to ensure OS agnosticism.
 
 The project is intentionally minimal and modular, with a strong emphasis on **real-time audio processing**, **AI-driven intent recognition**, and **developer ownership**.
 
----
+
+
+## Instructions For Codingn Agents:  
+
+If you're **Coding Agent** working for this project, here is what you need to read before performing any task:
+
+- The most important file is [10KFEETVIEW.Mmd](./10KFEETVIEW.mmd)
+- The second most important file is Prompt file to Vertex Multimodal Live AI; [PROMPT.md](./PROMPT.md).  
+- The third file Coding Agents need to understand the project is the [CHANGELOG.md](./CHANGELOG.md).  This file will list the project's main features and their publishing dates, and the project's backlog of pending featuers sorted by **Priority**.
+
+***Note:** Coding Agents **SHOULD NOT PRIORITIZE INFORMATION FOUND IN THE CURRENT [README.md](./README.md) FILE OVER THE ABOVE MENTIONED FILES** to understand this Project, as [README.md](./README.md) is often Outdated in the current Project's Stage.
+
 
 ## Quick Start
 
@@ -19,7 +30,6 @@ make shell     # Open terminal inside container
 make clean     # Remove image and cached volumes
 ```
 
----
 
 ## What Scrapbot.ai Does
 
@@ -31,9 +41,6 @@ make clean     # Remove image and cached volumes
 - Produces structured JSON responses
 - Replies to the user using local neural text-to-speech (TTS)
 
-All core logic is designed to be **local-first** and runnable on commodity hardware.
-
----
 
 ## What Scrapbot.ai Does NOT Do (yet)
 
@@ -46,7 +53,7 @@ All core logic is designed to be **local-first** and runnable on commodity hardw
 
 Scrapbot.ai is a **voice processing and intent inference engine** (for now), not a full Alexa replacement.
 
----
+
 
 ## Voice Processing Pipeline
 
@@ -66,7 +73,7 @@ JSON response
 Text-to-Speech (TTS) (local)
 ```
 
----
+
 
 ## Project Structure
 
@@ -96,7 +103,7 @@ SCRAPBOT.AI/
 - `configs/listener_config.py` - Audio and Wake Word settings
 - `configs/reasoner_config.py` - NLP pipeline configuration
 
----
+
 
 ## Tech Stack
 
@@ -118,7 +125,6 @@ SCRAPBOT.AI/
 - Docker - containerized deployment
 - Linux (Debian / Ubuntu) - primary platform
 
----
 
 ## Configuration
 
@@ -129,7 +135,7 @@ The system uses a modular configuration approach:
 - `.env` - API keys and secrets (not committed)
 - `.env.demo` - template for required environment variables
 
----
+
 
 ## Example Flow
 
@@ -141,7 +147,7 @@ The system uses a modular configuration approach:
 6. Intent is inferred and returned as structured JSON
 7. A spoken response is generated via TTS
 
----
+
 
 ## Hardware Requirements
 
@@ -151,7 +157,7 @@ The system uses a modular configuration approach:
 - Microphone
 - Speakers or headphones
 
----
+
 
 ## Docker Deployment
 
@@ -163,7 +169,6 @@ docker-compose up
 
 This approach ensures consistent behavior across different environments.
 
----
 
 ## Project Status
 
@@ -181,7 +186,6 @@ Core pipeline defined. APIs and interfaces may evolve.
 - Audio stream instead of audio file to make it go faster ⚡
 
 
----
 
 ## Philosophy
 
@@ -190,7 +194,6 @@ Core pipeline defined. APIs and interfaces may evolve.
 - **Minimal dependencies** - fewer moving parts
 - **Composable** - easy to extend with new intents
 
----
 
 ## Architecture
 
@@ -202,7 +205,6 @@ The system follows a clean separation of concerns:
 
 This modular design makes it easy to swap components or extend functionality.
 
----
 
 ## License
 
@@ -210,7 +212,6 @@ MIT License
 
 Vibe coded with free chatgpt version GPT-5.2.
 
----
 
 ## Audience
 

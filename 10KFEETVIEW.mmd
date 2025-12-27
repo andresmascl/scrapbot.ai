@@ -1,0 +1,33 @@
+---
+config:
+  theme: neo
+---
+flowchart TD;
+subgraph LocalBot["Local Bot"]
+	A[Bot Listens]
+	C{Workflow Activation Keyword?}
+	D[Bot Beeps]
+	E{Context Flush Keyword?}
+	F[Start New Session]
+	G[Resume Session]
+	H[Send Prompt with Intent List and JSON Spec]
+	I[Open Socket and Stream Audio]
+	J[Stop Stream on Silence]
+	L[Transform Text to Speech and Execute Automation]
+	M[Sleep 7 Hours]
+	N[Delete Existing Sessions]
+end
+
+subgraph CloudLLM["Cloud LLM"]
+	K[Read Prompt and Listen to Audio Stream]
+	O[Reply Following JSON Response Spec]
+end
+
+A --> C
+C -- Yes --> D --> E
+C -- No --> A
+
+E -- Yes --> F --> H
+E -- No --> G --> H
+
+H --> I --> J --> K --> O --> L --> M --> N
