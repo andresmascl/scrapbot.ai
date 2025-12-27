@@ -7,15 +7,7 @@ The project is intentionally minimal and modular, with a strong emphasis on **re
 
 
 ## Instructions For Codingn Agents:  
-
-If you're **Coding Agent** working for this project, here is what you need to read before performing any task:
-
-- The most important file is [10KFEETVIEW.Mmd](./10KFEETVIEW.mmd)
-- The second most important file is Prompt file to Vertex Multimodal Live AI; [PROMPT.md](./PROMPT.md).  
-- The third file Coding Agents need to understand the project is the [CHANGELOG.md](./CHANGELOG.md).  This file will list the project's main features and their publishing dates, and the project's backlog of pending featuers sorted by **Priority**.
-
-***Note:** Coding Agents **SHOULD NOT PRIORITIZE INFORMATION FOUND IN THE CURRENT [README.md](./README.md) FILE OVER THE ABOVE MENTIONED FILES** to understand this Project, as [README.md](./README.md) is often Outdated in the current Project's Stage.
-
+If you're **Coding Agent** working for this project, refer to [AGENTS.md](./AGENTS.md) before reading below information.
 
 ## Quick Start
 

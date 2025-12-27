@@ -15,8 +15,8 @@
 ```
 
 ### Available Intents:
-#### play_youtube: "User's Intent is for the Local Assistant to Play Content From Youtube Using the Local Browser",
-#### provide_info: "The User Wants the AI Agent, to Provide General Information About a Search Term"
+#### **play_youtube**: "User wants the Assistant to play a Youtube video locally",
+#### **provide_info**: "User Wants the Assistant to Provide General Information About a Topic"
 
 ### Response Structure:
 ```json
