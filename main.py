@@ -91,6 +91,19 @@ async def main_loop():
                 # Hand over the generator to the reasoner
                 await reasoner.run_live_session(audio_gen)
                 
+                # Flush buffers to prevent self-triggering (echo loop)
+                await audio_gen.aclose() # Stop current listener and wake word worker
+                try:
+                    if stream.is_active():
+                        n_frames = stream.get_read_available()
+                        if n_frames > 0:
+                            stream.read(n_frames, exception_on_overflow=False)
+                except Exception:
+                    pass
+                
+                # Restart listener
+                audio_gen = listen(stream, native_rate=native_rate)
+
                 # Clear the line again before returning to the wake-word loop
                 sys.stdout.write("\r\x1b[2K")
                 sys.stdout.flush()

@@ -70,6 +70,11 @@ async def listen(stream, native_rate):
 						play_wake_sound()
 						wake_cooldown_until = now + WAKE_COOLDOWN_SEC
 						await event_queue.put("START_SESSION")
+						
+						# Clear audio queue to prevent processing backlog or echoes
+						while not audio_queue.empty():
+							try: audio_queue.get_nowait()
+							except asyncio.QueueEmpty: break
 
 	worker_task = asyncio.create_task(wake_word_worker())
 
