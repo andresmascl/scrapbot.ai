@@ -74,9 +74,14 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
 
     # cancel any pending delayed rearm
     try:
-        if isinstance(_rearm_task, asyncio.Task) and not _rearm_task.done():
+        if isinstance(_rearm_task, asyncio.Task):
+            if not _rearm_task.done():
+                _rearm_task.cancel()
+        elif isinstance(_rearm_task, threading.Timer):
             _rearm_task.cancel()
-    except Exception:
+            print(f"🚫 Cancelled old threading.Timer rearm task", flush=True)
+    except Exception as e:
+        print(f"⚠️ Error cancelling rearm task: {e}", flush=True)
         pass
 
     if delay <= 0:
