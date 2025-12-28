@@ -8,7 +8,8 @@ import torch
 import time
 from google import genai
 from google.genai import types
-from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD
+from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD, TTS_REARM_DELAY_SEC
+import listener  # To disable wake during TTS
 
 # Local model / API settings (use config as primary source)
 LOCATION = os.getenv("GCP_REGION", "us-central1")
@@ -184,11 +185,17 @@ async def process_voice_command(audio_gen):
             if "feedback" in data and data["feedback"]:
                 text = data["feedback"]
                 print(f"🗣️ Speaking: {text}", flush=True)
+
+                # Disable wake word detection BEFORE TTS to prevent audio loopback
+                print(f"🔇 Disabling wake detection before TTS to prevent loopback", flush=True)
+                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
+
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         "espeak", text, stderr=asyncio.subprocess.DEVNULL
                     )
                     await proc.wait()
+                    print(f"✅ TTS complete, wake will re-enable in {TTS_REARM_DELAY_SEC}s", flush=True)
                 except FileNotFoundError:
                     pass
 
