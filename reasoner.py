@@ -1,31 +1,47 @@
 import asyncio
 import json
 import os
-import sys
-import subprocess
 import io
 import wave
 import numpy as np
 import torch
+import time
 from google import genai
 from google.genai import types
-from config import PROJECT_ID
-import listener  # Access vad_model from listener
+from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD
+import listener  # only to re-arm wake after finishing a session
 
-# Configuration
-LOCATION = "us-central1"
-MODEL_ID = "gemini-2.0-flash-exp"
-SILENCE_THRESHOLD_MS = 1500  # Stop streaming after 1.5s of silence
+# Local model / API settings (use config as primary source)
+LOCATION = os.getenv("GCP_REGION", "us-central1")
+MODEL_ID = os.getenv("VERTEX_MODEL_NAME", MODEL_NAME)
+
+# Silence detection in ms
+SILENCE_THRESHOLD_MS = int(float(SILENCE_SECONDS) * 1000)
+
+# Load Silero VAD **here** (reasoner owns the VAD)
+print("Loading Silero VAD in reasoner...", flush=True)
+vad_model, _ = torch.hub.load(
+    repo_or_dir='snakers4/silero-vad',
+    model='silero_vad',
+    force_reload=False,
+    trust_repo=True
+)
+
 
 def get_system_instruction():
     try:
         with open("PROMPT.md", "r") as f:
             return f.read()
     except FileNotFoundError:
-        print("⚠️ PROMPT.md not found. Using default instruction.")
+        print("⚠️ PROMPT.md not found. Using default instruction.", flush=True)
         return "You are a helpful assistant."
 
+
 async def transcribe_audio(client, audio_bytes):
+    """
+    Send a small WAV to the LLM STT model (using genai client).
+    Returns the transcript string or empty on error.
+    """
     print("✍️ Transcribing...", flush=True)
     try:
         with io.BytesIO() as wav_buffer:
@@ -45,82 +61,111 @@ async def transcribe_audio(client, audio_bytes):
         )
         return response.text.strip()
     except Exception as e:
-        print(f"⚠️ STT Error: {e}")
+        print(f"⚠️ STT Error: {e}", flush=True)
         return ""
 
-async def run_live_session(audio_gen):
+
+async def process_voice_command(audio_gen):
     """
-    Records audio, transcribes it using Google STT, and sends text to LLM.
+    Consumes the async audio generator returned by listener.listen() after a START_SESSION.
+    Records until silence is detected (using locally-run Silero VAD), transcribes audio,
+    sends text to the LLM, parses JSON response and performs optional TTS feedback.
+
+    This function *does not* perform action execution — it just returns the parsed JSON
+    and plays short TTS feedback if provided by the LLM response.
     """
     api_key = os.getenv("GOOGLE_API_KEY")
     if api_key:
-        print(f"🔑 Using Google AI Studio API Key with {MODEL_ID}...", flush=True)
         client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta1'})
     else:
-        print(f"⚡ Connecting to Vertex AI with {MODEL_ID}...", flush=True)
         client = genai.Client(project=PROJECT_ID, location=LOCATION, http_options={'api_version': 'v1beta1'})
 
     system_instruction = get_system_instruction()
-    
-    # VAD State
+
+    # Buffers
     frames = []
-    silence_start_time = None
-    is_speaking = False
     vad_buffer = b""
-    
-    print("👂 Listening...", flush=True)
+    is_speaking = False
+    silence_start_time = None
+    listen_start_time = asyncio.get_running_loop().time()
+
+    print("👂 Listening for command (reasoner)...", flush=True)
 
     try:
         async for chunk in audio_gen:
+            # skip control tokens
             if isinstance(chunk, str):
                 continue
+
             frames.append(chunk)
             vad_buffer += chunk
-            
-            # Local VAD Logic to detect "Stop"
+
+            # process VAD in 1024-byte frames
             while len(vad_buffer) >= 1024:
                 process_chunk = vad_buffer[:1024]
                 vad_buffer = vad_buffer[1024:]
 
-                # Convert int16 bytes to float32 tensor for Silero VAD
+                # to float32 for Silero VAD
                 audio_int16 = np.frombuffer(process_chunk, dtype=np.int16)
                 audio_float32 = audio_int16.astype(np.float32) / 32768.0
                 tensor = torch.from_numpy(audio_float32)
-                
-                # Get speech probability
-                speech_prob = listener.vad_model(tensor, 16000).item()
-                
-                if speech_prob > 0.5:
+
+                # get speech probability
+                try:
+                    speech_prob = vad_model(tensor, 16000).item()
+                except Exception as e:
+                    print(f"⚠️ VAD error: {e}", flush=True)
+                    speech_prob = 0.0
+
+                # threshold decision
+                if speech_prob > float(VAD_THRESHOLD):
                     is_speaking = True
                     silence_start_time = None
-                    sys.stdout.write(".") # Visual feedback for speech
-                    sys.stdout.flush()
+                    # optional visual dot (non-essential)
+                    print(".", end="", flush=True)
                 else:
-                    if is_speaking: # Only count silence if we have started speaking
+                    if is_speaking:
                         if silence_start_time is None:
                             silence_start_time = asyncio.get_running_loop().time()
-                        
                         elapsed_silence = (asyncio.get_running_loop().time() - silence_start_time) * 1000
                         if elapsed_silence > SILENCE_THRESHOLD_MS:
                             print("\n🛑 Silence detected. Processing...", flush=True)
                             raise StopAsyncIteration
+                    else:
+                        # no speech started and timeout
+                        if (asyncio.get_running_loop().time() - listen_start_time) > 5.0:
+                            print("\n⌛ Timeout: No speech detected.", flush=True)
+                            return
+
     except StopAsyncIteration:
         pass
+    except Exception as e:
+        print(f"⚠️ Reasoner input error: {e}", flush=True)
+        return
 
     audio_bytes = b''.join(frames)
     if not audio_bytes:
+        print("⚠️ No audio captured.", flush=True)
+        # Make sure wake gets re-enabled even if nothing recorded
+        try:
+            listener.rearm_wake_word()
+        except Exception:
+            pass
         return
 
-    # 1. Transcribe
+    # 1) Transcribe
     transcript = await transcribe_audio(client, audio_bytes)
     if not transcript:
-        print("⚠️ No speech detected.")
+        print("⚠️ No transcript.", flush=True)
+        listener.rearm_wake_word()
         return
-    print(f"🗣️ Transcript: {transcript}")
 
-    # 2. Send to LLM
+    print(f"\n🗣️ Transcript: {transcript}", flush=True)
+
+    # 2) Send the transcript to the LLM for structured JSON response
     print(f"🤔 Thinking with {MODEL_ID}...", flush=True)
     try:
+        # Generate content with preference for JSON structured output
         response = await client.aio.models.generate_content(
             model=MODEL_ID,
             contents=transcript,
@@ -129,23 +174,23 @@ async def run_live_session(audio_gen):
                 response_mime_type="application/json"
             )
         )
-        
+
         accumulated_response = response.text
 
-        # Parse and Print JSON
         print("\n🤖 Raw LLM Response:")
-        print(accumulated_response)
-        
+        print(accumulated_response, flush=True)
+
+        # Try to extract JSON (strip Markdown fences if present)
+        clean_json = accumulated_response.replace("```json", "").replace("```", "").strip()
         try:
-            # Clean up markdown code blocks if present
-            clean_json = accumulated_response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             print("\n✅ Parsed JSON:")
-            print(json.dumps(data, indent=2))
-            
-            if "feedback" in data:
+            print(json.dumps(data, indent=2), flush=True)
+
+            # optional feedback TTS if present
+            if "feedback" in data and data["feedback"]:
                 text = data["feedback"]
-                print(f"🗣️ Speaking: {text}")
+                print(f"🗣️ Speaking: {text}", flush=True)
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         "espeak", text, stderr=asyncio.subprocess.DEVNULL
@@ -153,7 +198,17 @@ async def run_live_session(audio_gen):
                     await proc.wait()
                 except FileNotFoundError:
                     pass
+
+            # return parsed data for further action (executor)
+            return data
+
         except json.JSONDecodeError:
-            print("⚠️ Failed to parse JSON response.")
+            print("⚠️ Failed to parse JSON response.", flush=True)
     except Exception as e:
-        print(f"❌ LLM Error: {e}")
+        print(f"❌ LLM Error: {e}", flush=True)
+
+    # finally re-arm wake so system returns to listening state
+    try:
+        listener.rearm_wake_word()
+    except Exception:
+        pass

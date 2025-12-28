@@ -2,32 +2,48 @@
 config:
   theme: neo
 ---
-flowchart TD;
-subgraph LocalBot["Local Bot"]
-	A[Bot Listens]
-	C{Workflow Activation Keyword?}
-	D[Bot Beeps]
-	E{Context Flush Keyword?}
-	F[Start New Session]
-	G[Resume Session]
-	H[Send Prompt with Intent List and JSON Spec]
-	I[Open Socket and Stream Audio]
-	J[Stop Stream on Silence]
-	L[Transform Text to Speech and Execute Automation]
-	M[Sleep 7 Hours]
-	N[Delete Existing Sessions]
-end
+flowchart TB
+    A(["**Bot** Listens"]) --> C["**Bot** Detects **Workflow Activation Keyword**"]
+    C -- Si --> n4["**Bot** Beeps"]
+    n1["**Bot** Detects **Context Flush Keyword**"] -- Yes --> n2["**Bot** Starts **New Session**"]
+    n2 --> n3["**Bot** Sends Current **Prompt** w/ **Intent List** and **Json Response Spec**"]
+    n4 --> n1
+    C -- No --> A
+    n3 --> n5["**Bot** Opens **Socket** and Starts Sending **Audio**"]
+    n1 -- No --> n6["**Bot** Tries to **Resume Session**"]
+    n6 --> n3
+    n5 --> n7["**Bot** Stops **Stream** When it Detects **Silence**"]
+    n11["**STT Service** Transforms Speech 2 Text"] --> n23["**Bot** sends Text to precontextualized Cloud LLM"]
+    n15["**Bot** Transforms **Text to Speech** &amp; **Executes Automation**"] --> n20["**Bot** Sleeps 7 **Hours**"]
+    n20 --> n21["**Bot** Deletes **Existing Sessionss**"]
+    n23 --> n24["**LLM** returns json reply"]
+    n7 --> n11
+    n24 --> n15
+    n18["**Yellow** = **Local Bot**"]
+    n19["**Green** = **Cloud LLM**"]
+    n25["**Blue** = **Cloud STT**"]
 
-subgraph CloudLLM["Cloud LLM"]
-	K[Read Prompt and Listen to Audio Stream]
-	O[Reply Following JSON Response Spec]
-end
-
-A --> C
-C -- Yes --> D --> E
-C -- No --> A
-
-E -- Yes --> F --> H
-E -- No --> G --> H
-
-H --> I --> J --> K --> O --> L --> M --> N
+    C@{ shape: diam}
+    n1@{ shape: diam}
+    n7@{ shape: rect}
+    n18@{ shape: rect}
+    n19@{ shape: rect}
+    n25@{ shape: rect}
+    style A stroke:#FFD600
+    style C stroke:#FFD600
+    style n4 stroke:#FFD600
+    style n1 stroke:#FFD600
+    style n2 stroke:#FFD600
+    style n3 stroke:#FFD600
+    style n5 stroke:#FFD600
+    style n6 stroke:#FFD600
+    style n7 stroke:#FFD600
+    style n11 stroke:#2962FF
+    style n23 stroke:#FFD600
+    style n15 stroke:#FFD600
+    style n20 stroke:#FFD600
+    style n21 stroke:#FFD600
+    style n24 stroke:#00C853
+    style n18 stroke:#FFD600
+    style n19 stroke:#00C853
+    style n25 stroke:#2962FF

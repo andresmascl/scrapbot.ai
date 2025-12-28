@@ -18,6 +18,7 @@
 #### **play_youtube**: "User wants the Assistant to play a Youtube video locally",
 #### **provide_info**: "User Wants the Assistant to Provide General Information About a Topic"
 
+
 ### Response Structure:
 ```json
 {
@@ -43,3 +44,6 @@
 	}
 }
 ```
+
+You only have one turn to respond.
+Reply always in the user's language
