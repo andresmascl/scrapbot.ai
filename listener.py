@@ -198,6 +198,13 @@ async def listen(stream, native_rate):
                         asyncio.create_task(play_wake_sound())
 
                         local_cooldown_until = now + WAKE_COOLDOWN_SEC
+
+                        # Check if wake is still allowed before adding event
+                        # This prevents race condition where we process old audio
+                        # after global_wake_allowed was set to False
+                        if not global_wake_allowed:
+                            continue
+
                         global_wake_allowed = False
 
                         while not audio_queue.empty():
