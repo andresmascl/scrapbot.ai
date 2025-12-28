@@ -84,10 +84,13 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
         return
 
     global_wake_allowed = False
+    print(f"🔒 Wake word detection disabled (delay={delay}s, clear_queue={clear_queue})", flush=True)
 
     # Clear both audio and event queues to prevent processing old TTS feedback
     # and any pending START_SESSION events from false detections
     if clear_queue:
+        audio_cleared = 0
+        event_cleared = 0
         try:
             loop = asyncio.get_running_loop()
             # Clear audio queue
@@ -95,6 +98,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
                 while not rearm_wake_word._audio_queue.empty():
                     try:
                         rearm_wake_word._audio_queue.get_nowait()
+                        audio_cleared += 1
                     except:
                         break
             # Clear event queue to remove any pending START_SESSION events
@@ -102,17 +106,21 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
                 while not rearm_wake_word._event_queue.empty():
                     try:
                         rearm_wake_word._event_queue.get_nowait()
+                        event_cleared += 1
                     except:
                         break
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"⚠️ Error clearing queues: {e}", flush=True)
+        print(f"🗑️ Cleared {audio_cleared} audio chunks and {event_cleared} events from queues", flush=True)
 
     async def _delayed_rearm():
         try:
             await asyncio.sleep(delay)
             global global_wake_allowed
             global_wake_allowed = True
+            print(f"🔓 Wake word detection re-enabled after {delay}s delay", flush=True)
         except asyncio.CancelledError:
+            print(f"🚫 Wake word rearm cancelled", flush=True)
             return
 
     try:
@@ -195,6 +203,7 @@ async def listen(stream, native_rate):
                     score = predictions.get(WAKE_KEY, 0.0)
 
                     if score > WAKE_THRESHOLD:
+                        print(f"🔔 Wake word score: {score:.3f} (threshold: {WAKE_THRESHOLD}, allowed: {global_wake_allowed})", flush=True)
                         asyncio.create_task(play_wake_sound())
 
                         local_cooldown_until = now + WAKE_COOLDOWN_SEC
@@ -203,8 +212,10 @@ async def listen(stream, native_rate):
                         # This prevents race condition where we process old audio
                         # after global_wake_allowed was set to False
                         if not global_wake_allowed:
+                            print(f"⏭️ Skipping wake word detection - global_wake_allowed is False", flush=True)
                             continue
 
+                        print(f"✅ Adding START_SESSION to event_queue", flush=True)
                         global_wake_allowed = False
 
                         while not audio_queue.empty():

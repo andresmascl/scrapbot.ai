@@ -61,8 +61,10 @@ async def main_loop():
                 in_session = True
                 print("🛰️ Wake word detected! Listening for command...", flush=True)
 
-                await reasoner.process_voice_command(audio_gen)
+                result = await reasoner.process_voice_command(audio_gen)
+                print(f"📋 Reasoner returned: {result}", flush=True)
 
+                print(f"🔧 Rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
                 listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
                 in_session = False
                 print("🔄 Session complete. Wake word re-armed.", flush=True)
