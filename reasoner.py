@@ -9,7 +9,6 @@ import time
 from google import genai
 from google.genai import types
 from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD
-import listener  # only to re-arm wake after finishing a session
 
 # Local model / API settings (use config as primary source)
 LOCATION = os.getenv("GCP_REGION", "us-central1")
@@ -146,18 +145,12 @@ async def process_voice_command(audio_gen):
     audio_bytes = b''.join(frames)
     if not audio_bytes:
         print("⚠️ No audio captured.", flush=True)
-        # Make sure wake gets re-enabled even if nothing recorded
-        try:
-            listener.rearm_wake_word()
-        except Exception:
-            pass
         return
 
     # 1) Transcribe
     transcript = await transcribe_audio(client, audio_bytes)
     if not transcript:
         print("⚠️ No transcript.", flush=True)
-        listener.rearm_wake_word()
         return
 
     print(f"\n🗣️ Transcript: {transcript}", flush=True)
@@ -206,9 +199,3 @@ async def process_voice_command(audio_gen):
             print("⚠️ Failed to parse JSON response.", flush=True)
     except Exception as e:
         print(f"❌ LLM Error: {e}", flush=True)
-
-    # finally re-arm wake so system returns to listening state
-    try:
-        listener.rearm_wake_word()
-    except Exception:
-        pass

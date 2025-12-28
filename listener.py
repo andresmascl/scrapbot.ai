@@ -60,12 +60,15 @@ def stop():
         pass
 
 
-def rearm_wake_word(delay: float = 0.0):
+def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
     """
     Re-enable wake detection.
 
     If delay > 0, keep the gate CLOSED for `delay` seconds to avoid
     retriggering from TTS or echo.
+
+    If clear_queue is True, clears the audio queue to prevent processing
+    old audio that might contain TTS feedback.
     """
     global global_wake_allowed, _rearm_task
 
@@ -81,6 +84,21 @@ def rearm_wake_word(delay: float = 0.0):
         return
 
     global_wake_allowed = False
+
+    # Clear audio queue to prevent processing old TTS feedback
+    if clear_queue:
+        try:
+            loop = asyncio.get_running_loop()
+            # Find the audio_queue from the running wake_word_worker task
+            # We'll access it via a module-level variable
+            if hasattr(rearm_wake_word, '_audio_queue'):
+                while not rearm_wake_word._audio_queue.empty():
+                    try:
+                        rearm_wake_word._audio_queue.get_nowait()
+                    except:
+                        break
+        except Exception:
+            pass
 
     async def _delayed_rearm():
         try:
@@ -126,6 +144,9 @@ async def listen(stream, native_rate):
 
     audio_queue = asyncio.Queue(maxsize=100)
     event_queue = asyncio.Queue()
+
+    # Store audio_queue reference so rearm_wake_word can clear it
+    rearm_wake_word._audio_queue = audio_queue
 
     async def wake_word_worker():
         global global_wake_allowed
