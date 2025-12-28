@@ -186,18 +186,23 @@ async def process_voice_command(audio_gen):
                 text = data["feedback"]
                 print(f"🗣️ Speaking: {text}", flush=True)
 
-                # Disable wake word detection BEFORE TTS to prevent audio loopback
+                # Disable wake word detection immediately (no delay yet)
                 print(f"🔇 Disabling wake detection before TTS to prevent loopback", flush=True)
-                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
+                print(f"🔀 Setting global_wake_allowed = False (before TTS)", flush=True)
+                listener.global_wake_allowed = False  # Disable immediately
 
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         "espeak", text, stderr=asyncio.subprocess.DEVNULL
                     )
-                    await proc.wait()
-                    print(f"✅ TTS complete, wake will re-enable in {TTS_REARM_DELAY_SEC}s", flush=True)
+                    await proc.wait()  # WAIT for TTS to complete
+                    print(f"✅ TTS complete", flush=True)
                 except FileNotFoundError:
                     pass
+
+                # NOW start the rearm delay timer after TTS has finished
+                print(f"🔧 Starting {TTS_REARM_DELAY_SEC}s rearm delay after TTS completion", flush=True)
+                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
 
             # return parsed data for further action (executor)
             return data
