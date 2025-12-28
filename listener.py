@@ -85,16 +85,23 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
 
     global_wake_allowed = False
 
-    # Clear audio queue to prevent processing old TTS feedback
+    # Clear both audio and event queues to prevent processing old TTS feedback
+    # and any pending START_SESSION events from false detections
     if clear_queue:
         try:
             loop = asyncio.get_running_loop()
-            # Find the audio_queue from the running wake_word_worker task
-            # We'll access it via a module-level variable
+            # Clear audio queue
             if hasattr(rearm_wake_word, '_audio_queue'):
                 while not rearm_wake_word._audio_queue.empty():
                     try:
                         rearm_wake_word._audio_queue.get_nowait()
+                    except:
+                        break
+            # Clear event queue to remove any pending START_SESSION events
+            if hasattr(rearm_wake_word, '_event_queue'):
+                while not rearm_wake_word._event_queue.empty():
+                    try:
+                        rearm_wake_word._event_queue.get_nowait()
                     except:
                         break
         except Exception:
@@ -145,8 +152,9 @@ async def listen(stream, native_rate):
     audio_queue = asyncio.Queue(maxsize=100)
     event_queue = asyncio.Queue()
 
-    # Store audio_queue reference so rearm_wake_word can clear it
+    # Store queue references so rearm_wake_word can clear them
     rearm_wake_word._audio_queue = audio_queue
+    rearm_wake_word._event_queue = event_queue
 
     async def wake_word_worker():
         global global_wake_allowed
