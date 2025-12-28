@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libpulse0 \
     pulseaudio-utils \
+    espeak \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,7 +34,9 @@ COPY . .
 # Set up a non-root user for security (while keeping audio permissions)
 RUN useradd -m -u 1000 scrapbot && \
     mkdir -p /home/scrapbot/.cache/torch && \
-    chown -R scrapbot:scrapbot /home/scrapbot /app
+    chown -R scrapbot:scrapbot /home/scrapbot /app && \
+    cp /app/asound.conf /home/scrapbot/.asoundrc && \
+    chown scrapbot:scrapbot /home/scrapbot/.asoundrc
 
 USER scrapbot
 

@@ -2,7 +2,7 @@ import asyncio
 import pyaudio
 import reasoner
 import listener
-from config import FRAME_SIZE, PROJECT_ID
+from config import FRAME_SIZE, PROJECT_ID, TTS_REARM_DELAY_SEC
 import os
 import sys
 from ctypes import *
@@ -61,11 +61,17 @@ async def main_loop():
                 in_session = True
                 print("🛰️ Wake word detected! Listening for command...", flush=True)
 
-                await reasoner.process_voice_command(audio_gen)
+                result = await reasoner.process_voice_command(audio_gen)
+                print(f"📋 Reasoner returned: {result}", flush=True)
 
-                listener.rearm_wake_word(delay=1.0)
+                # If no TTS was played (timeout/error), we still need to rearm with delay
+                # reasoner.py only calls rearm if TTS is played
+                if not result or "feedback" not in result:
+                    print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
+                    listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
+
                 in_session = False
-                print("🔄 Session complete. Wake word re-armed.", flush=True)
+                print("🔄 Session complete.", flush=True)
 
     finally:
         listener.stop()

@@ -8,8 +8,8 @@ import torch
 import time
 from google import genai
 from google.genai import types
-from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD
-import listener  # only to re-arm wake after finishing a session
+from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD, TTS_REARM_DELAY_SEC
+import listener  # To disable wake during TTS
 
 # Local model / API settings (use config as primary source)
 LOCATION = os.getenv("GCP_REGION", "us-central1")
@@ -146,18 +146,12 @@ async def process_voice_command(audio_gen):
     audio_bytes = b''.join(frames)
     if not audio_bytes:
         print("⚠️ No audio captured.", flush=True)
-        # Make sure wake gets re-enabled even if nothing recorded
-        try:
-            listener.rearm_wake_word()
-        except Exception:
-            pass
         return
 
     # 1) Transcribe
     transcript = await transcribe_audio(client, audio_bytes)
     if not transcript:
         print("⚠️ No transcript.", flush=True)
-        listener.rearm_wake_word()
         return
 
     print(f"\n🗣️ Transcript: {transcript}", flush=True)
@@ -191,13 +185,24 @@ async def process_voice_command(audio_gen):
             if "feedback" in data and data["feedback"]:
                 text = data["feedback"]
                 print(f"🗣️ Speaking: {text}", flush=True)
+
+                # Disable wake word detection immediately (no delay yet)
+                print(f"🔇 Disabling wake detection before TTS to prevent loopback", flush=True)
+                print(f"🔀 Setting global_wake_allowed = False (before TTS)", flush=True)
+                listener.global_wake_allowed = False  # Disable immediately
+
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         "espeak", text, stderr=asyncio.subprocess.DEVNULL
                     )
-                    await proc.wait()
+                    await proc.wait()  # WAIT for TTS to complete
+                    print(f"✅ TTS complete", flush=True)
                 except FileNotFoundError:
                     pass
+
+                # NOW start the rearm delay timer after TTS has finished
+                print(f"🔧 Starting {TTS_REARM_DELAY_SEC}s rearm delay after TTS completion", flush=True)
+                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
 
             # return parsed data for further action (executor)
             return data
@@ -206,9 +211,3 @@ async def process_voice_command(audio_gen):
             print("⚠️ Failed to parse JSON response.", flush=True)
     except Exception as e:
         print(f"❌ LLM Error: {e}", flush=True)
-
-    # finally re-arm wake so system returns to listening state
-    try:
-        listener.rearm_wake_word()
-    except Exception:
-        pass
