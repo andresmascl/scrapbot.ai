@@ -44,6 +44,7 @@ def stop():
     global _listener_running, global_wake_allowed, _rearm_task, _wake_worker_task
 
     _listener_running = False
+    print(f"🔀 Setting global_wake_allowed = False (stopping listener)", flush=True)
     global_wake_allowed = False
 
     # cancel delayed re-arm
@@ -91,9 +92,11 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
         pass
 
     if delay <= 0:
+        print(f"🔀 Setting global_wake_allowed = True (delay=0)", flush=True)
         global_wake_allowed = True
         return
 
+    print(f"🔀 Setting global_wake_allowed = False (starting {delay}s delay)", flush=True)
     global_wake_allowed = False
     print(f"🔒 Wake word detection disabled (delay={delay}s, clear_queue={clear_queue})", flush=True)
 
@@ -132,6 +135,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
             if current_generation != _rearm_generation:
                 print(f"🚫 Rearm task gen {current_generation} obsolete (current: {_rearm_generation}), not re-enabling", flush=True)
                 return
+            print(f"🔀 Setting global_wake_allowed = True (after {delay}s delay, gen {current_generation})", flush=True)
             global_wake_allowed = True
             print(f"🔓 Wake word detection re-enabled after {delay}s delay (gen {current_generation})", flush=True)
         except asyncio.CancelledError:
@@ -148,6 +152,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
             if current_generation != _rearm_generation:
                 print(f"🚫 Timer rearm gen {current_generation} obsolete (current: {_rearm_generation}), not re-enabling", flush=True)
                 return
+            print(f"🔀 Setting global_wake_allowed = True (via Timer after {delay}s, gen {current_generation})", flush=True)
             global_wake_allowed = True
             print(f"🔓 Wake word detection re-enabled via Timer after {delay}s (gen {current_generation})", flush=True)
 
@@ -249,6 +254,7 @@ async def listen(stream, native_rate):
                             continue
 
                         print(f"✅ Adding START_SESSION to event_queue", flush=True)
+                        print(f"🔀 Setting global_wake_allowed = False (wake word detected)", flush=True)
                         global_wake_allowed = False
                         await event_queue.put("START_SESSION")
         except asyncio.CancelledError:
