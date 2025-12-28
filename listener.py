@@ -33,6 +33,7 @@ global_wake_allowed = True
 _listener_running = True
 _rearm_task = None
 _wake_worker_task = None
+_rearm_generation = 0  # Incremented each time rearm_wake_word is called
 
 
 def stop():
@@ -70,7 +71,12 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
     If clear_queue is True, clears the audio queue to prevent processing
     old audio that might contain TTS feedback.
     """
-    global global_wake_allowed, _rearm_task
+    global global_wake_allowed, _rearm_task, _rearm_generation
+
+    # Increment generation to invalidate old pending rearm tasks
+    _rearm_generation += 1
+    current_generation = _rearm_generation
+    print(f"🔄 Rearm generation: {current_generation}", flush=True)
 
     # cancel any pending delayed rearm
     try:
@@ -121,11 +127,15 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
     async def _delayed_rearm():
         try:
             await asyncio.sleep(delay)
-            global global_wake_allowed
+            global global_wake_allowed, _rearm_generation
+            # Check if this task is still the current generation
+            if current_generation != _rearm_generation:
+                print(f"🚫 Rearm task gen {current_generation} obsolete (current: {_rearm_generation}), not re-enabling", flush=True)
+                return
             global_wake_allowed = True
-            print(f"🔓 Wake word detection re-enabled after {delay}s delay", flush=True)
+            print(f"🔓 Wake word detection re-enabled after {delay}s delay (gen {current_generation})", flush=True)
         except asyncio.CancelledError:
-            print(f"🚫 Wake word rearm cancelled", flush=True)
+            print(f"🚫 Wake word rearm cancelled (gen {current_generation})", flush=True)
             return
 
     try:
@@ -133,8 +143,13 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
         _rearm_task = loop.create_task(_delayed_rearm())
     except RuntimeError:
         def _sync_rearm():
-            global global_wake_allowed
+            global global_wake_allowed, _rearm_generation
+            # Check if this task is still the current generation
+            if current_generation != _rearm_generation:
+                print(f"🚫 Timer rearm gen {current_generation} obsolete (current: {_rearm_generation}), not re-enabling", flush=True)
+                return
             global_wake_allowed = True
+            print(f"🔓 Wake word detection re-enabled via Timer after {delay}s (gen {current_generation})", flush=True)
 
         t = threading.Timer(delay, _sync_rearm)
         t.daemon = True
