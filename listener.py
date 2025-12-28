@@ -105,7 +105,6 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
     if clear_queue:
         audio_cleared = 0
         event_cleared = 0
-        stream_drained = 0
         try:
             loop = asyncio.get_running_loop()
             # Clear audio queue
@@ -129,7 +128,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
             # This clears the PortAudio/ALSA buffer that may contain several seconds of audio
             if hasattr(rearm_wake_word, '_stream') and rearm_wake_word._stream:
                 async def drain_stream():
-                    nonlocal stream_drained
+                    stream_drained = 0
                     try:
                         # Drain for 0.5 seconds to clear buffer without blocking too long
                         drain_chunks = int(0.5 * 16000 / READ_CHUNK_SIZE)
@@ -140,13 +139,15 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
                                 exception_on_overflow=False
                             )
                             stream_drained += 1
+                        print(f"🧹 Stream buffer drained: {stream_drained} chunks", flush=True)
                     except Exception as e:
                         print(f"⚠️ Error draining stream: {e}", flush=True)
 
-                await drain_stream()
+                # Schedule drain as background task (runs while rearm delay is active)
+                loop.create_task(drain_stream())
         except Exception as e:
             print(f"⚠️ Error clearing queues: {e}", flush=True)
-        print(f"🗑️ Cleared {audio_cleared} audio chunks, {event_cleared} events, drained {stream_drained} stream chunks", flush=True)
+        print(f"🗑️ Cleared {audio_cleared} audio chunks and {event_cleared} events from queues", flush=True)
 
     async def _delayed_rearm():
         try:
