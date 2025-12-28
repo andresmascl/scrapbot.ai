@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libpulse0 \
     pulseaudio-utils \
+    espeak \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
