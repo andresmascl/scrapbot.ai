@@ -105,6 +105,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
     if clear_queue:
         audio_cleared = 0
         event_cleared = 0
+        stream_drained = 0
         try:
             loop = asyncio.get_running_loop()
             # Clear audio queue
@@ -123,9 +124,29 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
                         event_cleared += 1
                     except:
                         break
+
+            # Drain the PyAudio stream buffer to remove any lingering audio from loopback
+            # This clears the PortAudio/ALSA buffer that may contain several seconds of audio
+            if hasattr(rearm_wake_word, '_stream') and rearm_wake_word._stream:
+                async def drain_stream():
+                    nonlocal stream_drained
+                    try:
+                        # Drain for 0.5 seconds to clear buffer without blocking too long
+                        drain_chunks = int(0.5 * 16000 / READ_CHUNK_SIZE)
+                        for _ in range(drain_chunks):
+                            await asyncio.to_thread(
+                                rearm_wake_word._stream.read,
+                                READ_CHUNK_SIZE,
+                                exception_on_overflow=False
+                            )
+                            stream_drained += 1
+                    except Exception as e:
+                        print(f"⚠️ Error draining stream: {e}", flush=True)
+
+                await drain_stream()
         except Exception as e:
             print(f"⚠️ Error clearing queues: {e}", flush=True)
-        print(f"🗑️ Cleared {audio_cleared} audio chunks and {event_cleared} events from queues", flush=True)
+        print(f"🗑️ Cleared {audio_cleared} audio chunks, {event_cleared} events, drained {stream_drained} stream chunks", flush=True)
 
     async def _delayed_rearm():
         try:
@@ -185,9 +206,11 @@ async def listen(stream, native_rate):
     audio_queue = asyncio.Queue(maxsize=100)
     event_queue = asyncio.Queue()
 
-    # Store queue references so rearm_wake_word can clear them
+    # Store queue references and stream so rearm_wake_word can clear them
     rearm_wake_word._audio_queue = audio_queue
     rearm_wake_word._event_queue = event_queue
+    rearm_wake_word._stream = stream
+    rearm_wake_word._native_rate = native_rate
 
     async def wake_word_worker():
         global global_wake_allowed
