@@ -210,20 +210,26 @@ async def listen(stream, native_rate):
 
                         # Check if wake is still allowed before adding event
                         # This prevents race condition where we process old audio
-                        # after global_wake_allowed was set to False
+                        # after global_wake_allowed was set to False by main.py
                         if not global_wake_allowed:
                             print(f"⏭️ Skipping wake word detection - global_wake_allowed is False", flush=True)
                             continue
 
-                        print(f"✅ Adding START_SESSION to event_queue", flush=True)
-                        global_wake_allowed = False
-
+                        # Clear audio queue before adding event
                         while not audio_queue.empty():
                             try:
                                 audio_queue.get_nowait()
                             except asyncio.QueueEmpty:
                                 break
 
+                        # Double-check global_wake_allowed hasn't been disabled while we were clearing the queue
+                        # This prevents race where main.py calls rearm_wake_word() between our check and adding event
+                        if not global_wake_allowed:
+                            print(f"⏭️ Wake disabled during queue clear, skipping event", flush=True)
+                            continue
+
+                        print(f"✅ Adding START_SESSION to event_queue", flush=True)
+                        global_wake_allowed = False
                         await event_queue.put("START_SESSION")
         except asyncio.CancelledError:
             pass
