@@ -2,7 +2,7 @@ import asyncio
 import pyaudio
 import reasoner
 import listener
-from config import FRAME_SIZE, PROJECT_ID
+from config import FRAME_SIZE, PROJECT_ID, TTS_REARM_DELAY_SEC
 import os
 import sys
 from ctypes import *
@@ -63,7 +63,7 @@ async def main_loop():
 
                 await reasoner.process_voice_command(audio_gen)
 
-                listener.rearm_wake_word(delay=1.0)
+                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC)
                 in_session = False
                 print("🔄 Session complete. Wake word re-armed.", flush=True)
 

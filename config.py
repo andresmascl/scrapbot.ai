@@ -15,6 +15,8 @@ WAKE_THRESHOLD = 0.6
 VAD_THRESHOLD = 0.5
 SILENCE_SECONDS = 1
 WAKE_COOLDOWN_SEC = 3.0
+# Delay after TTS to prevent audio feedback/echo from retriggering wake word
+TTS_REARM_DELAY_SEC = float(os.getenv("TTS_REARM_DELAY_SEC", "3.0"))
 
 # --- GCP / LIVE API ---
 # These now pull from the organized .env via Docker
