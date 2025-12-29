@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant Alice as Audio
+    participant John as Main.py
+    participant P1 as AI.py
+    autonumber
+    loop Wait for Wake Word
+      Note over Alice: Mic Input Stream Service
+      Note over Alice: Wake Word Detection Service
+      Note over John: Start Listening
+      John->>Alice: Listen to Audio Stream
+    end
+    Note over John: Identify Wake Word
+    Note over John: Stop Waiting for Wake Word
+    Note over John: Play MP3 Wake Sound
+    loop Wait for Silence
+      Note over Alice: Mic Stream Recording Service
+      Note over Alice: SMic Stream ilence Detection Service
+      Note over John: Start Recording
+      John->>Alice: Record Mic Input
+    end
+    Note over John: Identify Silence
+    Note over John: Stop Waitingn for Silence, Recording and Streaming Mic Input
+    Note over P1: Google STT Service
+    John->>P1: Send Recorded Speech
+    P1->>John: Receive Transcription Text
+    Note over P1: Google LLM
+    John->>P1: Send PROMPT.md + Transcription Text
+    P1->>John: Get JSON Response
+    John->>Alice: Get the Content of "Feedback" Field as Speech
+    Note over John: Play Feedback Speech
+    Note over John: Start Streaming Live input and Waiting for Wake Word Again
