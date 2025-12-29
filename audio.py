@@ -87,8 +87,16 @@ def is_speech(audio_chunk):
     """Check if audio chunk contains speech using VAD"""
     audio_int16 = np.frombuffer(audio_chunk, dtype=np.int16)
     audio_float32 = audio_int16.astype(np.float32) / 32768.0
-    audio_tensor = torch.from_numpy(audio_float32)
 
+    # Silero VAD needs exactly 512 samples for 16kHz
+    # If chunk is larger, take the first 512 samples
+    if len(audio_float32) > 512:
+        audio_float32 = audio_float32[:512]
+    elif len(audio_float32) < 512:
+        # Pad if needed
+        audio_float32 = np.pad(audio_float32, (0, 512 - len(audio_float32)))
+
+    audio_tensor = torch.from_numpy(audio_float32)
     speech_prob = vad_model(audio_tensor, SAMPLE_RATE).item()
     return speech_prob > VAD_THRESHOLD
 
