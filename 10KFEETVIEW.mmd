@@ -5,15 +5,11 @@ config:
 flowchart TB
     A(["**Bot** Listens"]) --> C["**Bot** Detects **Workflow Activation Keyword**"]
     C -- Si --> n4["**Bot** Beeps"]
-    n1["**Bot** Detects **Context Flush Keyword**"] -- Yes --> n2["**Bot** Starts **New Session**"]
-    n2 --> n3["**Bot** Sends Current **Prompt** w/ **Intent List** and **Json Response Spec**"]
-    n4 --> n1
+    n4 --> n3["**Bot** Sends Current **Prompt** w/ **Intent List** and **Json Response Spec**"]
     C -- No --> A
     n3 --> n5["**Bot** Opens **Socket** and Starts Sending **Audio**"]
-    n1 -- No --> n6["**Bot** Tries to **Resume Session**"]
-    n6 --> n3
     n5 --> n7["**Bot** Stops **Stream** When it Detects **Silence**"]
-    n11["**STT Service** Transforms Speech 2 Text"] --> n23["**Bot** sends Text to precontextualized Cloud LLM"]
+    n11["**STT Service** Transforms Speech 2 Text"] --> n23["**Bot** sends Text to LLM"]
     n15["**Bot** Transforms **Text to Speech** &amp; **Executes Automation**"] --> A
     n23 --> n24["**LLM** returns json reply"]
     n7 --> n11
@@ -23,7 +19,6 @@ flowchart TB
     n25["**Blue** = **Cloud STT**"]
 
     C@{ shape: diam}
-    n1@{ shape: diam}
     n7@{ shape: rect}
     n18@{ shape: rect}
     n19@{ shape: rect}
@@ -31,11 +26,8 @@ flowchart TB
     style A stroke:#FFD600
     style C stroke:#FFD600
     style n4 stroke:#FFD600
-    style n1 stroke:#FFD600
-    style n2 stroke:#FFD600
     style n3 stroke:#FFD600
     style n5 stroke:#FFD600
-    style n6 stroke:#FFD600
     style n7 stroke:#FFD600
     style n11 stroke:#2962FF
     style n23 stroke:#FFD600
