@@ -253,6 +253,25 @@ async def listen(stream, native_rate):
 
                     if score > WAKE_THRESHOLD:
                         print(f"🔔 Wake word score: {score:.3f} (threshold: {WAKE_THRESHOLD}, allowed: {global_wake_allowed})", flush=True)
+
+                        # Clear queues before playing wake sound
+                        pre_wake_audio_cleared = 0
+                        pre_wake_event_cleared = 0
+                        while not audio_queue.empty():
+                            try:
+                                audio_queue.get_nowait()
+                                pre_wake_audio_cleared += 1
+                            except:
+                                break
+                        while not event_queue.empty():
+                            try:
+                                event_queue.get_nowait()
+                                pre_wake_event_cleared += 1
+                            except:
+                                break
+                        if pre_wake_audio_cleared > 0 or pre_wake_event_cleared > 0:
+                            print(f"🗑️ Cleared {pre_wake_audio_cleared} audio chunks and {pre_wake_event_cleared} events before wake sound", flush=True)
+
                         asyncio.create_task(play_wake_sound())
 
                         local_cooldown_until = now + WAKE_COOLDOWN_SEC

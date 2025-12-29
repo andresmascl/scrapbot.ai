@@ -181,6 +181,29 @@ async def process_voice_command(audio_gen):
             print("\n✅ Parsed JSON:")
             print(json.dumps(data, indent=2), flush=True)
 
+            # Clear audio and event queues after JSON response
+            audio_cleared = 0
+            event_cleared = 0
+            try:
+                if hasattr(listener.rearm_wake_word, '_audio_queue'):
+                    while not listener.rearm_wake_word._audio_queue.empty():
+                        try:
+                            listener.rearm_wake_word._audio_queue.get_nowait()
+                            audio_cleared += 1
+                        except:
+                            break
+                if hasattr(listener.rearm_wake_word, '_event_queue'):
+                    while not listener.rearm_wake_word._event_queue.empty():
+                        try:
+                            listener.rearm_wake_word._event_queue.get_nowait()
+                            event_cleared += 1
+                        except:
+                            break
+                if audio_cleared > 0 or event_cleared > 0:
+                    print(f"🗑️ Cleared {audio_cleared} audio chunks and {event_cleared} events after JSON response", flush=True)
+            except Exception as e:
+                print(f"⚠️ Error clearing queues after JSON: {e}", flush=True)
+
             # optional feedback TTS if present
             if "feedback" in data and data["feedback"]:
                 text = data["feedback"]
