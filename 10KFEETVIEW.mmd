@@ -14,8 +14,7 @@ flowchart TB
     n6 --> n3
     n5 --> n7["**Bot** Stops **Stream** When it Detects **Silence**"]
     n11["**STT Service** Transforms Speech 2 Text"] --> n23["**Bot** sends Text to precontextualized Cloud LLM"]
-    n15["**Bot** Transforms **Text to Speech** &amp; **Executes Automation**"] --> n20["**Bot** Sleeps 7 **Hours**"]
-    n20 --> n21["**Bot** Deletes **Existing Sessionss**"]
+    n15["**Bot** Transforms **Text to Speech** &amp; **Executes Automation**"] --> A
     n23 --> n24["**LLM** returns json reply"]
     n7 --> n11
     n24 --> n15
@@ -41,8 +40,6 @@ flowchart TB
     style n11 stroke:#2962FF
     style n23 stroke:#FFD600
     style n15 stroke:#FFD600
-    style n20 stroke:#FFD600
-    style n21 stroke:#FFD600
     style n24 stroke:#00C853
     style n18 stroke:#FFD600
     style n19 stroke:#00C853
