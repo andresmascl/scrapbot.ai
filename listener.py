@@ -248,7 +248,7 @@ async def listen(stream, native_rate):
                         with wake_model_lock:
                             return wake_model.predict(audio_frame)
 
-                    predictions = await asyncio.to_thread(_predict)
+                    predictions = _predict()
                     score = predictions.get(WAKE_KEY, 0.0)
 
                     if score > WAKE_THRESHOLD:
