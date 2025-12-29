@@ -25,61 +25,65 @@ def no_alsa_err():
 
 
 async def main_loop():
-    missing = []
-    if not PROJECT_ID:
-        missing.append("GCP_PROJECT_ID")
-    if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not os.getenv("GOOGLE_APPLICATIONS_CREDENTIALS") and not os.getenv("GOOGLE_CREDENTIALS"):
-        missing.append("GOOGLE_APPLICATION_CREDENTIALS")
-    if missing:
-        raise RuntimeError(f"Missing required environment: {', '.join(missing)}")
+	main_flag=True
+	while main_flag:
+		missing = []
+		if not PROJECT_ID:
+			missing.append("GCP_PROJECT_ID")
+		if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not os.getenv("GOOGLE_APPLICATIONS_CREDENTIALS") and not os.getenv("GOOGLE_CREDENTIALS"):
+			missing.append("GOOGLE_APPLICATION_CREDENTIALS")
+		if missing:
+			raise RuntimeError(f"Missing required environment: {', '.join(missing)}")
 
-    with no_alsa_err():
-        p = pyaudio.PyAudio()
+		with no_alsa_err():
+			p = pyaudio.PyAudio()
 
-    device_info = p.get_default_input_device_info()
-    native_rate = int(device_info['defaultSampleRate'])
+		device_info = p.get_default_input_device_info()
+		native_rate = int(device_info['defaultSampleRate'])
 
-    stream = p.open(
-        format=pyaudio.paInt16,
-        channels=1,
-        rate=native_rate,
-        input=True,
-        frames_per_buffer=FRAME_SIZE,
-    )
+		stream = p.open(
+			format=pyaudio.paInt16,
+			channels=1,
+			rate=native_rate,
+			input=True,
+			frames_per_buffer=FRAME_SIZE,
+		)
 
-    print("🤖 Scrapbot is active. Say the wake word.", flush=True)
+		print("🤖 Scrapbot is active. Say the wake word.", flush=True)
 
-    audio_gen = listener.listen(stream, native_rate=native_rate)
-    in_session = False
+		audio_gen = listener.listen(stream, native_rate=native_rate)
+		in_session = False
 
-    try:
-        async for item in audio_gen:
-            if item == "START_SESSION":
-                if in_session:
-                    continue
+		try:
+			async for item in audio_gen:
+				if item == "START_SESSION":
+					if in_session:
+						continue
 
-                in_session = True
-                print("🛰️ Wake word detected! Listening for command...", flush=True)
+					in_session = True
+					print("🛰️ Wake word detected! Listening for command...", flush=True)
 
-                result = await reasoner.process_voice_command(audio_gen)
-                print(f"📋 Reasoner returned: {result}", flush=True)
+					result = await reasoner.process_voice_command(audio_gen)
+					print(f"📋 Reasoner returned: {result}", flush=True)
 
-                # If no TTS was played (timeout/error), we still need to rearm with delay
-                # reasoner.py only calls rearm if TTS is played
-                if not result or "feedback" not in result:
-                    print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
-                    listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
+					# If no TTS was played (timeout/error), we still need to rearm with delay
+					# reasoner.py only calls rearm if TTS is played
+					if not result or "feedback" not in result:
+						print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
+						listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
 
-                in_session = False
-                print("🔄 Session complete.", flush=True)
+					in_session = False
+					print("🔄 Session complete.", flush=True)
 
-    finally:
-        listener.stop()
-        try:
-            stream.stop_stream()
-            stream.close()
-        except Exception:
-            pass
+		finally:
+			await audio_gen.aclose()			
+			listener.stop()
+			p.terminate()
+			try:
+				stream.stop_stream()
+				stream.close()
+			except Exception:
+				pass
 
 
 if __name__ == "__main__":
