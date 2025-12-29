@@ -108,6 +108,7 @@ async def main():
                 await speak(feedback)
 
             # === PHASE 9: Check session timeout (7 hours) ===
+            # Passive check - clear context if too old
             if session_start_time:
                 elapsed = datetime.now() - session_start_time
                 if elapsed > timedelta(hours=SESSION_TIMEOUT_HOURS):
@@ -115,6 +116,7 @@ async def main():
                     session_context = None
                     session_start_time = None
 
+            # Loop back to listening (following 10KFEETVIEW: n15 --> A)
             print("✅ Ready! Listening for wake word...", flush=True)
 
     except KeyboardInterrupt:

@@ -12,7 +12,11 @@ from config import (
 
 # Initialize wake word model
 print("Loading wake word model...", flush=True)
-wake_model = Model(wakeword_models=[WAKE_WORD])
+try:
+    wake_model = Model(wakeword_models=[WAKE_WORD])
+except TypeError:
+    # Older API - load all default models
+    wake_model = Model()
 
 # Initialize VAD
 print("Loading VAD model...", flush=True)
