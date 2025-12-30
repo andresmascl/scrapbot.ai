@@ -200,10 +200,6 @@ async def process_voice_command(audio_gen):
                 except FileNotFoundError:
                     pass
 
-                # NOW start the rearm delay timer after TTS has finished
-                print(f"🔧 Starting {TTS_REARM_DELAY_SEC}s rearm delay after TTS completion", flush=True)
-                listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
-
             # return parsed data for further action (executor)
             return data
 

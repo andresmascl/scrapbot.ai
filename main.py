@@ -57,27 +57,23 @@ async def main_loop():
 		try:
 			async for item in audio_gen:
 				if item == "START_SESSION":
-					listener.rearm_wake_word._event_queue.empty()
-					listener.global_wake_allowed = False
-					listener.buffer_audio = b""
 					if in_session:
 						continue
 
+					listener.global_wake_allowed = False
+					listener.buffer_audio = b""
 					in_session = True
+
 					print("🛰️ Wake word detected! Listening for command...", flush=True)
 
 					result = await reasoner.process_voice_command(audio_gen)
 					print(f"📋 Reasoner returned: {result}", flush=True)
 
-					# If no TTS was played (timeout/error), we still need to rearm with delay
-					# reasoner.py only calls rearm if TTS is played
-					# if not result or "feedback" not in result:
-					# 	print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
-					# 	listener.rearm_wake_word(delay=0,clear_queue=True)
-					# 	print("post listener.rearm_wake_word", flush=True)
-					listener.rearm_wake_word(clear_queue=True, delay=1)
+					listener.rearm_wake_word()
 					in_session = False
 					print("🔄 Session complete.", flush=True)
+					listener.global_wake_allowed = True
+					print("listener.global_wake_allowed = True", flush=True)
 
 
 		finally:
