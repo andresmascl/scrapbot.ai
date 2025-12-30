@@ -50,13 +50,16 @@ async def main_loop():
 		)
 
 		print("🤖 Scrapbot is active. Say the wake word.", flush=True)
-
+		listener.global_wake_allowed = True
 		audio_gen = listener.listen(stream, native_rate=native_rate)
 		in_session = False
 
 		try:
 			async for item in audio_gen:
 				if item == "START_SESSION":
+					listener.rearm_wake_word._event_queue.empty()
+					listener.global_wake_allowed = False
+					listener.buffer_audio = b""
 					if in_session:
 						continue
 
@@ -68,12 +71,14 @@ async def main_loop():
 
 					# If no TTS was played (timeout/error), we still need to rearm with delay
 					# reasoner.py only calls rearm if TTS is played
-					if not result or "feedback" not in result:
-						print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
-						listener.rearm_wake_word(delay=TTS_REARM_DELAY_SEC, clear_queue=True)
-
+					# if not result or "feedback" not in result:
+					# 	print(f"🔧 No TTS played, rearming wake word with {TTS_REARM_DELAY_SEC}s delay...", flush=True)
+					# 	listener.rearm_wake_word(delay=0,clear_queue=True)
+					# 	print("post listener.rearm_wake_word", flush=True)
+					listener.rearm_wake_word(clear_queue=True, delay=1)
 					in_session = False
 					print("🔄 Session complete.", flush=True)
+
 
 		finally:
 			await audio_gen.aclose()			

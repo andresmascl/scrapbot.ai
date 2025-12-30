@@ -1,5 +1,4 @@
 import os 
-from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -14,7 +13,6 @@ WAKE_KEY = "hey_mycroft"
 WAKE_THRESHOLD = float(os.getenv("WAKE_THRESHOLD", "0.7"))  # Increased from 0.6 to reduce false positives
 VAD_THRESHOLD = 0.5
 SILENCE_SECONDS = 1
-WAKE_COOLDOWN_SEC = 3.0
 # Delay after TTS to prevent audio feedback/echo from retriggering wake word
 TTS_REARM_DELAY_SEC = float(os.getenv("TTS_REARM_DELAY_SEC", "5.0"))  # Increased from 3.0 to 5.0
 

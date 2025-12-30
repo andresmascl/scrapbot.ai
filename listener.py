@@ -1,13 +1,11 @@
 import asyncio
 import numpy as np
 import audioop
-import time
 import subprocess
 import math
-import sys
 import threading
 from openwakeword.model import Model
-from config import WAKE_KEY, WAKE_THRESHOLD, WAKE_COOLDOWN_SEC, FRAME_SIZE
+from config import WAKE_KEY, WAKE_THRESHOLD, FRAME_SIZE
 import os
 
 # Constants
@@ -91,11 +89,6 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
         print(f"⚠️ Error cancelling rearm task: {e}", flush=True)
         pass
 
-    if delay <= 0:
-        print(f"🔀 Setting global_wake_allowed = True (delay=0)", flush=True)
-        global_wake_allowed = True
-        return
-
     print(f"🔀 Setting global_wake_allowed = False (starting {delay}s delay)", flush=True)
     global_wake_allowed = False
     print(f"🔒 Wake word detection disabled (delay={delay}s, clear_queue={clear_queue})", flush=True)
@@ -123,6 +116,7 @@ def rearm_wake_word(delay: float = 0.0, clear_queue: bool = False):
                         event_cleared += 1
                     except:
                         break
+            print(f"🧹 Cleared queues, audio: {audio_cleared}, events: {event_cleared}", flush=True)
 
             # Drain the PyAudio stream buffer to remove any lingering audio from loopback
             # This clears the PortAudio/ALSA buffer that may contain several seconds of audio
@@ -198,131 +192,106 @@ async def play_wake_sound():
 
 
 async def listen(stream, native_rate):
-    """
-    Long-lived async generator.
-    Runs until listener.stop() is called.
-    """
-    global _wake_worker_task
+	"""
+	Long-lived async generator.
+	Runs until listener.stop() is called.
+	"""
+	global _wake_worker_task
 
-    audio_queue = asyncio.Queue(maxsize=100)
-    event_queue = asyncio.Queue()
+	audio_queue = asyncio.Queue(maxsize=100)
+	event_queue = asyncio.Queue()
 
-    # Store queue references and stream so rearm_wake_word can clear them
-    rearm_wake_word._audio_queue = audio_queue
-    rearm_wake_word._event_queue = event_queue
-    rearm_wake_word._stream = stream
-    rearm_wake_word._native_rate = native_rate
+	# Store queue references and stream so rearm_wake_word can clear them
+	rearm_wake_word._audio_queue = audio_queue
+	rearm_wake_word._event_queue = event_queue
+	rearm_wake_word._stream = stream
+	rearm_wake_word._native_rate = native_rate
 
-    async def wake_word_worker():
-        global global_wake_allowed
+	async def wake_word_worker():
+		global global_wake_allowed
 
-        with wake_model_lock:
-            wake_model.reset()
+		with wake_model_lock:
+			wake_model.reset()
 
-        audio_buffer = b""
-        local_cooldown_until = 0.0
+		audio_buffer = b""
 
-        try:
-            while _listener_running:
-                if not global_wake_allowed:
-                    await asyncio.sleep(0.05)
-                    continue
+		try:
+			while _listener_running:
+				if not global_wake_allowed:
+					await asyncio.sleep(0.05)
+					continue
 
-                chunk = await audio_queue.get()
-                audio_buffer += chunk
+				chunk = await audio_queue.get()
+				audio_buffer += chunk
 
-                if len(audio_buffer) > 32000:
-                    audio_buffer = audio_buffer[-32000:]
+				if len(audio_buffer) > 32000:
+					audio_buffer = audio_buffer[-32000:]
 
-                while len(audio_buffer) >= 2560:
-                    frame = audio_buffer[:2560]
-                    audio_buffer = audio_buffer[2560:]
+				while len(audio_buffer) >= 2560:
+					frame = audio_buffer[:2560]
+					audio_buffer = audio_buffer[2560:]
 
-                    audio_frame = np.frombuffer(frame, dtype=np.int16)
-                    now = time.time()
+					audio_frame = np.frombuffer(frame, dtype=np.int16)
 
-                    if now < local_cooldown_until:
-                        continue
+					def _predict():
+						with wake_model_lock:
+							return wake_model.predict(audio_frame)
 
-                    def _predict():
-                        with wake_model_lock:
-                            return wake_model.predict(audio_frame)
+					predictions = await asyncio.to_thread(_predict)
+					score = predictions.get(WAKE_KEY, 0.0)
 
-                    predictions = await asyncio.to_thread(_predict)
-                    score = predictions.get(WAKE_KEY, 0.0)
+					if score > WAKE_THRESHOLD:
+						global_wake_allowed = False
+						print(f"🔔 Wake word score: {score:.3f} (threshold: {WAKE_THRESHOLD}, allowed: {global_wake_allowed})", flush=True)
+						
+						asyncio.create_task(play_wake_sound())
+						audio_buffer = b""	# reset buffer after detection
+						print(f"✅ Adding START_SESSION to event_queue", flush=True)
+						print(f"🔀 Setting global_wake_allowed = False (wake word detected)\n", flush=True)
+						await event_queue.put("START_SESSION")
 
-                    if score > WAKE_THRESHOLD:
-                        print(f"🔔 Wake word score: {score:.3f} (threshold: {WAKE_THRESHOLD}, allowed: {global_wake_allowed})", flush=True)
-                        asyncio.create_task(play_wake_sound())
+		except asyncio.CancelledError:
+			pass
 
-                        local_cooldown_until = now + WAKE_COOLDOWN_SEC
+	_wake_worker_task = asyncio.create_task(wake_word_worker())
 
-                        # Check if wake is still allowed before adding event
-                        # This prevents race condition where we process old audio
-                        # after global_wake_allowed was set to False by main.py
-                        if not global_wake_allowed:
-                            print(f"⏭️ Skipping wake word detection - global_wake_allowed is False", flush=True)
-                            continue
+	print(f"\n🎙️ Listener running — resampling {native_rate}Hz → 16kHz\n", flush=True)
+	resample_state = None
 
-                        # Clear audio queue before adding event
-                        while not audio_queue.empty():
-                            try:
-                                audio_queue.get_nowait()
-                            except asyncio.QueueEmpty:
-                                break
+	try:
+		while _listener_running:
+			data = await asyncio.to_thread(
+				stream.read,
+				READ_CHUNK_SIZE,
+				exception_on_overflow=False,
+			)
 
-                        # Double-check global_wake_allowed hasn't been disabled while we were clearing the queue
-                        # This prevents race where main.py calls rearm_wake_word() between our check and adding event
-                        if not global_wake_allowed:
-                            print(f"⏭️ Wake disabled during queue clear, skipping event", flush=True)
-                            continue
+			resampled, resample_state = audioop.ratecv(
+				data, 2, 1, native_rate, 16000, resample_state
+			)
 
-                        print(f"✅ Adding START_SESSION to event_queue", flush=True)
-                        print(f"🔀 Setting global_wake_allowed = False (wake word detected)", flush=True)
-                        global_wake_allowed = False
-                        await event_queue.put("START_SESSION")
-        except asyncio.CancelledError:
-            pass
+			if ENABLE_VOLUME_BAR:
+				try:
+					rms = audioop.rms(resampled, 2)
+					db = 20 * math.log10(max(1, rms))
+					filled = int(min(db, 80) / 80 * 50)
+					bar = "█" * filled
+					print(f"\033[F\033[K🔊 Volume: {rms:5d} |{bar}", flush=True)
+				except Exception:
+					pass
 
-    _wake_worker_task = asyncio.create_task(wake_word_worker())
+			try:
+				event = event_queue.get_nowait()
+				if event == "START_SESSION":
+					yield "START_SESSION"
+			except asyncio.QueueEmpty:
+				pass
 
-    print(f"🎙️ Listener running — resampling {native_rate}Hz → 16kHz", flush=True)
-    resample_state = None
+			yield resampled
 
-    try:
-        while _listener_running:
-            data = await asyncio.to_thread(
-                stream.read,
-                READ_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
+			if global_wake_allowed and not audio_queue.full():
+				audio_queue.put_nowait(resampled)
 
-            resampled, resample_state = audioop.ratecv(
-                data, 2, 1, native_rate, 16000, resample_state
-            )
-
-            if ENABLE_VOLUME_BAR:
-                try:
-                    rms = audioop.rms(resampled, 2)
-                    db = 20 * math.log10(max(1, rms))
-                    filled = int(min(db, 80) / 80 * 50)
-                    bar = "█" * filled
-                    print(f"\033[F\033[K🔊 Volume: {rms:5d} |{bar}", flush=True)
-                except Exception:
-                    pass
-
-            try:
-                event = event_queue.get_nowait()
-                if event == "START_SESSION":
-                    yield "START_SESSION"
-            except asyncio.QueueEmpty:
-                pass
-
-            yield resampled
-
-            if global_wake_allowed and not audio_queue.full():
-                audio_queue.put_nowait(resampled)
-
-    finally:
-        stop()
-        print("🛑 Listener stopped.", flush=True)
+	finally:
+		stop()
+		print("🛑 Listener stopped.", flush=True)
