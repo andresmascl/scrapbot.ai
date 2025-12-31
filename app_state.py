@@ -3,25 +3,46 @@ import asyncio
 
 class ListenState:
     def __init__(self):
-        self.listener_running = True
-        self.global_wake_allowed = True
-        self._lock = asyncio.Lock()
+        # Wake-word gate
+        self._global_wake_allowed = True
+        self._wake_lock = asyncio.Lock()
 
-    async def get_listener_running(self):
-        return self.listener_running
+        # Listener run gate (NEW)
+        self._listener_running = True
+        self._listener_lock = asyncio.Lock()
 
-    async def stop_listener_running(self):
-        self.listener_running = False
+    # -------------------------
+    # Wake-word control
+    # -------------------------
 
-    async def allow_global_wake_word(self):
-        self.global_wake_allowed = True
+    async def get_global_wake_word(self) -> bool:
+        async with self._wake_lock:
+            return self._global_wake_allowed
 
     async def block_global_wake_word(self):
-        print("🔀 Blocking global wake word", flush=True)
-        self.global_wake_allowed = False
+        async with self._wake_lock:
+            self._global_wake_allowed = False
 
-    async def get_global_wake_word(self):
-        return self.global_wake_allowed
+    async def allow_global_wake_word(self):
+        async with self._wake_lock:
+            self._global_wake_allowed = True
+
+    # -------------------------
+    # Listener run control (NEW)
+    # -------------------------
+
+    async def get_listener_running(self) -> bool:
+        async with self._listener_lock:
+            return self._listener_running
+
+    async def block_listener(self):
+        async with self._listener_lock:
+            self._listener_running = False
+
+    async def allow_listener(self):
+        async with self._listener_lock:
+            self._listener_running = True
 
 
+# Singleton used across modules
 listen_state = ListenState()

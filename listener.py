@@ -1,6 +1,5 @@
 import asyncio
 import numpy as np
-import audioop
 import subprocess
 import threading
 import os
@@ -26,6 +25,36 @@ WAKE_WINDOW_BYTES = int(SAMPLE_RATE * SAMPLE_WIDTH * WAKE_WINDOW_SEC)
 PREDICT_EVERY_SEC = 0.2  # 200 ms
 
 ENABLE_VOLUME_BAR = os.getenv("ENABLE_VOLUME_BAR", "0") == "1"
+
+# -------------------------
+# Helpers
+# -------------------------
+
+def rms_int16(frame: bytes) -> int:
+    samples = np.frombuffer(frame, dtype=np.int16)
+    if samples.size == 0:
+        return 0
+    return int(np.sqrt(np.mean(samples.astype(np.float32) ** 2)))
+
+
+def resample_int16(data: bytes, src_rate: int, dst_rate: int) -> bytes:
+    if src_rate == dst_rate:
+        return data
+
+    samples = np.frombuffer(data, dtype=np.int16)
+    if samples.size == 0:
+        return data
+
+    duration = samples.size / src_rate
+    target_len = int(duration * dst_rate)
+
+    resampled = np.interp(
+        np.linspace(0.0, samples.size, target_len, endpoint=False),
+        np.arange(samples.size),
+        samples,
+    ).astype(np.int16)
+
+    return resampled.tobytes()
 
 # -------------------------
 # Wake-word model
@@ -64,7 +93,6 @@ async def play_wake_sound():
     except Exception:
         pass
 
-
 # -------------------------
 # Listener
 # -------------------------
@@ -77,7 +105,6 @@ async def listen(stream, native_rate):
         flush=True,
     )
 
-    resample_state = None
     wake_buffer = bytearray()
     last_predict_time = 0.0
 
@@ -94,13 +121,10 @@ async def listen(stream, native_rate):
         # -------------------------
         # Resample to 16 kHz
         # -------------------------
-        resampled, resample_state = audioop.ratecv(
-            data,
-            SAMPLE_WIDTH,
-            1,
-            native_rate,
-            SAMPLE_RATE,
-            resample_state,
+        resampled = resample_int16(
+            data=data,
+            src_rate=native_rate,
+            dst_rate=SAMPLE_RATE,
         )
 
         # ✅ ALWAYS yield audio
@@ -110,7 +134,7 @@ async def listen(stream, native_rate):
         # Volume diagnostics
         # -------------------------
         if ENABLE_VOLUME_BAR:
-            rms = audioop.rms(resampled, SAMPLE_WIDTH)
+            rms = rms_int16(resampled)
             filled = int(min(rms, 2000) / 2000 * 30)
 
             print(

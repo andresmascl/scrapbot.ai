@@ -1,21 +1,26 @@
-# --- Index for CPU-only Torch ---
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# --- Audio Core ---
-pyaudio
-numpy>=1.24.0
-silero-vad
+# Audio
+pyaudio==0.2.14
+numpy>=1.24
 
-# --- AI / Machine Learning (CPU Optimized) ---
-torch==2.5.1+cpu
-torchaudio==2.5.1+cpu
-sentence-transformers
+# Wake word
 openwakeword
 onnxruntime
 
-# --- Google Gen AI SDK (New Multimodal Live) ---
-google-genai[aiohttp]>=1.0.0
+# ML / reasoning
+torch==2.6.0+cpu
+torchaudio==2.6.0+cpu
+sentence-transformers
 
-# --- Utilities ---
+
+# LLM / config
+google-genai[aiohttp]>=1.0.0
 python-dotenv>=1.0.0
+
+# Browser automation
+playwright==1.49.1
+
+# Tooling
 setuptools>=70.0.0
+wheel

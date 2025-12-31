@@ -1,55 +1,51 @@
-# Get the IDs once at the start
-export UID := $(shell id -u)
-export GID := $(shell id -g)
+# -------------------------
+# Project config
+# -------------------------
 
-# Container variables
-IMAGE_NAME := brave-voice-control
-CONTAINER_NAME := scrapbot-ai
-
+VENV := .venv
+PYTHON := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+PLAYWRIGHT := $(VENV)/bin/playwright
 
 # -------------------------
 # Default target
 # -------------------------
+
 .PHONY: help
 help:
-	@echo "Brave Music Totem - Docker Management"
+	@echo "Scrapbot (host-native)"
+	@echo ""
 	@echo "Targets:"
-	@echo "  make build     Build the Docker image"
-	@echo "  make up        Start the container in the background"
-	@echo "  make run       Start the container in the foreground (see logs)"
-	@echo "  make down      Stop and remove the container"
-	@echo "  make logs      Follow container logs"
-	@echo "  make shell     Open a terminal inside the running container"
-	@echo "  make clean     Remove the image and cached volumes"
+	@echo "  make venv        Create virtual environment"
+	@echo "  make deps        Install Python dependencies"
+	@echo "  make run         Run Scrapbot"
+	@echo "  make clean       Remove virtualenv and caches"
+	@ECHO "  make test        Run tests"
 
 # -------------------------
-# Docker Lifecycle
+# Environment setup
 # -------------------------
 
-.PHONY: build
-build:
-	docker compose build
+.PHONY: venv
+venv:
+	python3 -m venv $(VENV)
+	sudo apt install -y ffmpeg espeak-ng
 
-.PHONY: up
-up:
-	docker compose up -d
 
+.PHONY: deps
+deps: venv
+	$(PIP) install --upgrade pip setuptools wheel
+	$(PIP) install -r requirements.txt
+	$(PIP) install silero-vad==6.2.0 --no-deps
+
+
+# -------------------------
+# Run
+# -------------------------
 
 .PHONY: run
 run:
-	XDG_RUNTIME_DIR=$(XDG_RUNTIME_DIR) UID=$(UID) GID=$(GID) docker compose up
-
-.PHONY: down
-down:
-	docker compose down
-
-.PHONY: logs
-logs:
-	docker logs -f $(CONTAINER_NAME)
-
-.PHONY: shell
-shell:
-	docker exec -it $(CONTAINER_NAME) /bin/bash
+	$(PYTHON) main.py
 
 # -------------------------
 # Maintenance
@@ -57,4 +53,10 @@ shell:
 
 .PHONY: clean
 clean:
-	docker compose down --rmi all --volumes --remove-orphans
+	sudo rm -rf $(VENV)
+	sudo rm -rf ~/.cache/ms-playwright
+	sudo rm -rf /tmp/playwright-profile
+
+.PHONY: test
+test:
+	espeak --stdout "this will speak" | ffplay -autoexit -f wav -i pipe:0

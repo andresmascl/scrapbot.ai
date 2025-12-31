@@ -1,13 +1,15 @@
 import asyncio
-import pyaudio
 import os
+import pyaudio
 from ctypes import *
 from contextlib import contextmanager
 
 import listener
 import reasoner
+
 from config import FRAME_SIZE, PROJECT_ID
 from app_state import listen_state
+from browser import BrowserManager
 
 
 # -----------------------
@@ -39,6 +41,9 @@ def no_alsa_err():
 # -----------------------
 
 async def main_loop():
+    # -----------------------
+    # Early validation
+    # -----------------------
     if not PROJECT_ID:
         raise RuntimeError("Missing GCP_PROJECT_ID")
 
@@ -48,8 +53,15 @@ async def main_loop():
     ):
         raise RuntimeError("Missing Google credentials")
 
-    with no_alsa_err():
-        p = pyaudio.PyAudio()
+    # -----------------------
+    # Browser manager
+    # -----------------------
+    browser_manager = BrowserManager()
+
+    # -----------------------
+    # Audio setup
+    # -----------------------
+    p = pyaudio.PyAudio()
 
     device_info = p.get_default_input_device_info()
     native_rate = int(device_info["defaultSampleRate"])
@@ -67,11 +79,15 @@ async def main_loop():
     await listen_state.allow_global_wake_word()
     audio_gen = listener.listen(stream, native_rate=native_rate)
 
+    # -----------------------
+    # Event loop
+    # -----------------------
     try:
         async for item in audio_gen:
             if item != "START_SESSION":
                 continue
 
+            # Guard against re-entry
             if not await listen_state.get_global_wake_word():
                 continue
 
@@ -80,6 +96,21 @@ async def main_loop():
 
             result = await reasoner.process_voice_command(audio_gen)
             print(f"📋 Reasoner returned: {result}", flush=True)
+
+            # -----------------------
+            # Intent handling
+            # -----------------------
+            if isinstance(result, dict):
+                intent = result.get("intent")
+                filter_text = result.get("filter")
+
+                if intent == "play_youtube" and filter_text:
+                    print("▶️ Handling play_youtube intent", flush=True)
+
+                    try:
+                        await browser_manager.play_youtube(filter_text)
+                    except Exception as e:
+                        print(f"❌ Browser error: {e}", flush=True)
 
             print("🔄 Session complete. Re-arming wake word.", flush=True)
             await listen_state.allow_global_wake_word()
@@ -90,8 +121,13 @@ async def main_loop():
             stream.close()
         except Exception:
             pass
+
         p.terminate()
 
+
+# -----------------------
+# Entrypoint
+# -----------------------
 
 if __name__ == "__main__":
     try:
