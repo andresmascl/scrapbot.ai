@@ -29,11 +29,15 @@ help:
 .PHONY: venv
 venv:
 	python3 -m venv $(VENV)
-	sudo apt install -y ffmpeg espeak-ng
 
 
 .PHONY: deps
 deps: venv
+	sudo apt install -y -y mpv yt-dlp
+	sudo apt install -y ffmpeg espeak-ng
+	sudo apt install -y yt-dlp
+	sudo apt install mpv liblua5.4-0
+	sudo apt install mpv-lua
 	$(PIP) install --upgrade pip setuptools wheel
 	$(PIP) install -r requirements.txt
 	$(PIP) install silero-vad==6.2.0 --no-deps

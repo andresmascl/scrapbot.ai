@@ -9,7 +9,7 @@ import reasoner
 
 from config import FRAME_SIZE, PROJECT_ID
 from app_state import listen_state
-from browser import BrowserManager
+from yt import YouTubePlayer
 
 
 # -----------------------
@@ -54,14 +54,15 @@ async def main_loop():
         raise RuntimeError("Missing Google credentials")
 
     # -----------------------
-    # Browser manager
+    # YouTube player
     # -----------------------
-    browser_manager = BrowserManager()
+    yt_player = YouTubePlayer()
 
     # -----------------------
     # Audio setup
     # -----------------------
-    p = pyaudio.PyAudio()
+    with no_alsa_err():
+        p = pyaudio.PyAudio()
 
     device_info = p.get_default_input_device_info()
     native_rate = int(device_info["defaultSampleRate"])
@@ -87,7 +88,6 @@ async def main_loop():
             if item != "START_SESSION":
                 continue
 
-            # Guard against re-entry
             if not await listen_state.get_global_wake_word():
                 continue
 
@@ -106,11 +106,10 @@ async def main_loop():
 
                 if intent == "play_youtube" and filter_text:
                     print("▶️ Handling play_youtube intent", flush=True)
-
                     try:
-                        await browser_manager.play_youtube(filter_text)
+                        await yt_player.play(filter_text)
                     except Exception as e:
-                        print(f"❌ Browser error: {e}", flush=True)
+                        print(f"❌ yt-dlp/mpv error: {e}", flush=True)
 
             print("🔄 Session complete. Re-arming wake word.", flush=True)
             await listen_state.allow_global_wake_word()
