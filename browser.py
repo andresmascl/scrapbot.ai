@@ -17,8 +17,15 @@ class BrowserManager:
 
     async def _ensure_browser(self):
         async with self._lock:
+            # If browser exists, verify it's still alive
             if self._context and self._page:
-                return
+                try:
+                    await self._page.title()
+                    return
+                except Exception:
+                    # Brave was closed manually
+                    self._context = None
+                    self._page = None
 
             self._playwright = await async_playwright().start()
 
@@ -43,24 +50,41 @@ class BrowserManager:
 
         print(f"▶️ Opening YouTube and searching: {query}", flush=True)
 
-        await page.goto("https://www.youtube.com", wait_until="domcontentloaded")
+        await page.goto(
+            "https://www.youtube.com",
+            wait_until="domcontentloaded",
+        )
 
+        # Handle cookie / consent dialog if present
         try:
-            await page.get_by_role("button", name="Accept all").click(timeout=3000)
+            consent = page.get_by_role("button", name="Accept all")
+            if await consent.is_visible(timeout=3000):
+                await consent.click()
         except Exception:
             pass
 
-        search_box = page.locator("input#search")
-        await search_box.wait_for(timeout=10000)
+        # ✅ Correct YouTube search selector
+        search_box = page.locator('input[name="search_query"]')
+        await search_box.wait_for(state="visible", timeout=15000)
+
+        await search_box.click()
         await search_box.fill(query)
         await search_box.press("Enter")
 
+        # Wait for results
+        await page.wait_for_selector("ytd-video-renderer", timeout=15000)
+
+        # Click first video result
         first_video = page.locator("ytd-video-renderer a#thumbnail").first
-        await first_video.wait_for(timeout=15000)
+        await first_video.wait_for(state="visible", timeout=15000)
         await first_video.click()
 
     async def shutdown(self):
         if self._context:
             await self._context.close()
+            self._context = None
+            self._page = None
+
         if self._playwright:
             await self._playwright.stop()
+            self._playwright = None
