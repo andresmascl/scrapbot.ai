@@ -9,7 +9,7 @@ import time
 from google import genai
 from google.genai import types
 from config import PROJECT_ID, MODEL_NAME, SILENCE_SECONDS, VAD_THRESHOLD, TTS_REARM_DELAY_SEC
-import listener  # To disable wake during TTS
+from app_state import listen_state   # To disable wake during TTS
 
 # Local model / API settings (use config as primary source)
 LOCATION = os.getenv("GCP_REGION", "us-central1")
@@ -189,7 +189,7 @@ async def process_voice_command(audio_gen):
                 # Disable wake word detection immediately (no delay yet)
                 print(f"🔇 Disabling wake detection before TTS to prevent loopback", flush=True)
                 print(f"🔀 Setting global_wake_allowed = False (before TTS)", flush=True)
-                listener.global_wake_allowed = False  # Disable immediately
+                await listen_state.block_global_wake_word()
 
                 try:
                     proc = await asyncio.create_subprocess_exec(

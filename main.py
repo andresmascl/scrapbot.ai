@@ -4,7 +4,7 @@ import reasoner
 import listener
 from config import FRAME_SIZE, PROJECT_ID, TTS_REARM_DELAY_SEC
 import os
-import sys
+from app_state import listen_state
 from ctypes import *
 from contextlib import contextmanager
 
@@ -50,35 +50,33 @@ async def main_loop():
 		)
 
 		print("🤖 Scrapbot is active. Say the wake word.", flush=True)
-		listener.global_wake_allowed = True
+		await listen_state.allow_global_wake_word()
 		audio_gen = listener.listen(stream, native_rate=native_rate)
-		in_session = False
+
+		# allow wake word detection
+		await listen_state.allow_global_wake_word()
 
 		try:
 			async for item in audio_gen:
 				if item == "START_SESSION":
-					if in_session:
+					if await listen_state.get_global_wake_word() is False:
 						continue
+					else:
+						listen_state.block_global_wake_word()
+					
+					listen_state.empty_audio_buffer()
 
-					listener.global_wake_allowed = False
-					listener.buffer_audio = b""
-					in_session = True
 
 					print("🛰️ Wake word detected! Listening for command...", flush=True)
 
 					result = await reasoner.process_voice_command(audio_gen)
 					print(f"📋 Reasoner returned: {result}", flush=True)
 
-					listener.rearm_wake_word()
-					in_session = False
 					print("🔄 Session complete.", flush=True)
-					listener.global_wake_allowed = True
-					print("listener.global_wake_allowed = True", flush=True)
-
+					wake_word_allowed = await listen_state.allow_global_wake_word()
+					print(f"listener.global_wake_allowed = {wake_word_allowed}", flush=True)
 
 		finally:
-			await audio_gen.aclose()			
-			listener.stop()
 			p.terminate()
 			try:
 				stream.stop_stream()
