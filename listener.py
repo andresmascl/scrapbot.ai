@@ -2,32 +2,51 @@ import asyncio
 import numpy as np
 import audioop
 import subprocess
-import math
 import threading
 import os
+import time
 
 from openwakeword.model import Model
 from config import WAKE_KEY, WAKE_THRESHOLD, FRAME_SIZE
 from app_state import listen_state
 
+# -------------------------
+# Constants
+# -------------------------
+
 READ_CHUNK_SIZE = FRAME_SIZE
 WAKE_SOUND_PATH = "/app/wakeword-confirmed.mp3"
 
-WAKE_WINDOW_SAMPLES = 16000
-WAKE_WINDOW_BYTES = WAKE_WINDOW_SAMPLES * 2
+SAMPLE_RATE = 16000
+SAMPLE_WIDTH = 2  # int16
+
+WAKE_WINDOW_SEC = 1.0
+WAKE_WINDOW_BYTES = int(SAMPLE_RATE * SAMPLE_WIDTH * WAKE_WINDOW_SEC)
+
+PREDICT_EVERY_SEC = 0.2  # 200 ms
 
 ENABLE_VOLUME_BAR = os.getenv("ENABLE_VOLUME_BAR", "0") == "1"
+
+# -------------------------
+# Wake-word model
+# -------------------------
 
 print("Loading Wake Word model...", flush=True)
 
 try:
     wake_model = Model(wakeword_models=[WAKE_KEY])
 except TypeError:
-    print(f"⚠️ Argument mismatch. Loading default models and filtering for {WAKE_KEY}...")
+    print(
+        f"⚠️ Argument mismatch. Loading default models and filtering for {WAKE_KEY}...",
+        flush=True,
+    )
     wake_model = Model()
 
 wake_model_lock = threading.Lock()
 
+# -------------------------
+# Helpers
+# -------------------------
 
 async def play_wake_sound():
     try:
@@ -46,70 +65,105 @@ async def play_wake_sound():
         pass
 
 
+# -------------------------
+# Listener
+# -------------------------
+
 async def listen(stream, native_rate):
-    print(f"\n🎙️ Listener running — resampling {native_rate}Hz → 16kHz\n", flush=True)
+    print(
+        f"\n🎙️ Listener running — input={native_rate}Hz → 16kHz | "
+        f"FRAME_SIZE={FRAME_SIZE} | "
+        f"WAKE_WINDOW_BYTES={WAKE_WINDOW_BYTES}\n",
+        flush=True,
+    )
 
     resample_state = None
-    wake_buffer = b""
+    wake_buffer = bytearray()
+    last_predict_time = 0.0
 
     while await listen_state.get_listener_running():
+        # -------------------------
+        # Always read audio
+        # -------------------------
         data = await asyncio.to_thread(
             stream.read,
             READ_CHUNK_SIZE,
             exception_on_overflow=False,
         )
 
+        # -------------------------
+        # Resample to 16 kHz
+        # -------------------------
         resampled, resample_state = audioop.ratecv(
-            data, 2, 1, native_rate, 16000, resample_state
+            data,
+            SAMPLE_WIDTH,
+            1,
+            native_rate,
+            SAMPLE_RATE,
+            resample_state,
         )
 
+        # ✅ ALWAYS yield audio
+        yield resampled
+
         # -------------------------
-        # Volume + buffer display
+        # Volume diagnostics
         # -------------------------
         if ENABLE_VOLUME_BAR:
-            rms = audioop.rms(resampled, 2)
-            filled = int(min(rms, 2000) / 2000 * 40)
-            buffer_size = len(wake_buffer)
+            rms = audioop.rms(resampled, SAMPLE_WIDTH)
+            filled = int(min(rms, 2000) / 2000 * 30)
 
             print(
                 f"\033[F\033[K"
-                f"🔊 Volume: {rms:5d} |{'█' * filled:<40} "
-                f"📦 Buffer: {buffer_size:6d} bytes",
+                f"🔊 RMS:{rms:5d} |{'█' * filled:<30} "
+                f"BUF:{len(wake_buffer):6d}/{WAKE_WINDOW_BYTES}",
                 flush=True,
             )
 
         # -------------------------
-        # Passthrough if wake blocked
+        # Wake-word detection ONLY if allowed
         # -------------------------
         if not await listen_state.get_global_wake_word():
-            yield resampled
             continue
 
         # -------------------------
-        # Wake-word rolling buffer
+        # Overwrite-only buffer
         # -------------------------
-        wake_buffer += resampled
+        wake_buffer.extend(resampled)
         if len(wake_buffer) > WAKE_WINDOW_BYTES:
-            wake_buffer = wake_buffer[-WAKE_WINDOW_BYTES:]
+            wake_buffer[:] = wake_buffer[-WAKE_WINDOW_BYTES:]
 
         # -------------------------
-        # Wake-word detection
+        # Cadenced prediction
         # -------------------------
-        if len(wake_buffer) == WAKE_WINDOW_BYTES:
-            frame = np.frombuffer(wake_buffer, dtype=np.int16)
+        now = time.monotonic()
+
+        if (
+            len(wake_buffer) == WAKE_WINDOW_BYTES
+            and now - last_predict_time >= PREDICT_EVERY_SEC
+        ):
+            last_predict_time = now
+
+            frame = np.frombuffer(bytes(wake_buffer), dtype=np.int16)
 
             def _predict():
                 with wake_model_lock:
                     return wake_model.predict(frame)
 
-            score = (await asyncio.to_thread(_predict)).get(WAKE_KEY, 0.0)
+            scores = await asyncio.to_thread(_predict)
+            score = scores.get(WAKE_KEY, 0.0)
 
-            if score > WAKE_THRESHOLD:
-                print(f"🔔 Wake word detected (score={score:.3f})", flush=True)
+            if score >= WAKE_THRESHOLD:
+                print(
+                    f"\n🔔 Wake word detected "
+                    f"(score={score:.3f}, window={WAKE_WINDOW_SEC:.1f}s)",
+                    flush=True,
+                )
+
                 await play_wake_sound()
-                wake_buffer = b""
-                wake_model.reset()
-                yield "START_SESSION"
-                continue
 
-        yield resampled
+                wake_buffer.clear()
+                wake_model.reset()
+                last_predict_time = 0.0
+
+                yield "START_SESSION"
