@@ -1,41 +1,46 @@
-const WS_URL = "ws://127.0.0.1:8765";
-let socket = null;
+async function ensureOffscreen() {
+  if (await chrome.offscreen.hasDocument()) {
+    return;
+  }
 
-function connect() {
-  console.log("🔌 Connecting to Scrapbot WS…");
+  await chrome.offscreen.createDocument({
+    url: "offscreen.html",
+    reasons: ["DOM_PARSER"],
+    justification: "Maintain persistent WebSocket connection to Scrapbot",
+  });
 
-  socket = new WebSocket(WS_URL);
-
-  socket.onopen = () => {
-    console.log("🧩 Scrapbot WS connected");
-  };
-
-  socket.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-
-    chrome.tabs.query(
-      { active: true, lastFocusedWindow: true },
-      (tabs) => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, msg);
-        }
-      }
-    );
-  };
-
-  socket.onclose = () => {
-    console.warn("🔌 WS closed, retrying in 2s");
-    setTimeout(connect, 2000);
-  };
-
-  socket.onerror = () => {
-    socket.close();
-  };
+  console.log("🧠 Offscreen document created");
 }
 
-// Keep service worker alive
-chrome.runtime.onStartup.addListener(connect);
-chrome.runtime.onInstalled.addListener(connect);
+chrome.runtime.onStartup.addListener(ensureOffscreen);
+chrome.runtime.onInstalled.addListener(ensureOffscreen);
 
-// Also connect immediately
-connect();
+// Relay messages from offscreen → content script
+chrome.runtime.onMessage.addListener(async (msg) => {
+  const tabs = await chrome.tabs.query({
+    url: "https://www.youtube.com/*"
+  });
+
+  let tab;
+
+  if (tabs.length > 0) {
+    tab = tabs[0];
+  } else {
+    tab = await chrome.tabs.create({
+      url: "https://www.youtube.com",
+      active: true
+    });
+
+    // Wait for content script to load
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, msg);
+  } catch (e) {
+    console.warn("❌ Failed to send message to content script", e);
+  }
+});
+
+// Create immediately
+ensureOffscreen();

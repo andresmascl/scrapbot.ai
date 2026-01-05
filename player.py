@@ -2,7 +2,7 @@ import json
 import asyncio
 import subprocess
 import shutil
-import os
+import socket
 import websockets
 
 _CLIENTS: set[websockets.WebSocketServerProtocol] = set()
@@ -10,34 +10,56 @@ _CLIENTS: set[websockets.WebSocketServerProtocol] = set()
 # Brave root data directory (NOT a profile subdir)
 BRAVE_USER_DATA_DIR = "/home/a-mo/.config/BraveSoftware/Brave-Browser"
 BRAVE_PROFILE = "Profile 2"
+BRAVE_BINARY = "/usr/bin/brave-browser"
 
-_BRAVE_STARTED = False
+WS_HOST = "127.0.0.1"
+WS_PORT = 8765
 
 
 # -----------------------
-# Brave launcher (LAZY, ONE-SHOT)
+# Utility helpers
 # -----------------------
 
-def ensure_brave_running():
-    """
-    Launch Brave ONLY if the agent has not launched it before.
-    Called lazily from YouTube-related actions.
-    """
-    global _BRAVE_STARTED
+def is_port_in_use(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((host, port)) == 0
 
-    if _BRAVE_STARTED:
-        return
 
-    brave_path = "/usr/bin/brave-browser"
+def is_brave_running() -> bool:
+    """
+    Returns True if at least one Brave process is running.
+    """
+    try:
+        subprocess.check_output(
+            ["pgrep", "-f", "brave-browser"],
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def ensure_brave_running() -> bool:
+    """
+    Ensure a Brave instance exists.
+
+    Returns:
+        True  -> Brave was launched by this call
+        False -> Brave was already running
+    """
 
     if not shutil.which("brave-browser"):
-        print("❌ Brave browser not found", flush=True)
-        return
+        print("❌ Brave browser not found in PATH", flush=True)
+        return False
+
+    if is_brave_running():
+        print("🌐 Brave already running — reusing instance", flush=True)
+        return False
 
     try:
         subprocess.Popen(
             [
-                brave_path,
+                BRAVE_BINARY,
                 f"--user-data-dir={BRAVE_USER_DATA_DIR}",
                 f"--profile-directory={BRAVE_PROFILE}",
             ],
@@ -46,11 +68,12 @@ def ensure_brave_running():
             start_new_session=True,
         )
 
-        _BRAVE_STARTED = True
-        print("🌐 Brave launched on-demand (YouTube intent)", flush=True)
+        print("🌐 Brave launched (no running instance detected)", flush=True)
+        return True
 
     except Exception as e:
         print(f"❌ Failed to launch Brave: {e}", flush=True)
+        return False
 
 
 # -----------------------
@@ -66,7 +89,13 @@ async def _ws_handler(ws):
         _CLIENTS.discard(ws)
 
 
-async def start_ws_server(host="127.0.0.1", port=8765):
+async def start_ws_server(host=WS_HOST, port=WS_PORT):
+    if is_port_in_use(host, port):
+        raise RuntimeError(
+            f"WebSocket server already running on {host}:{port}. "
+            "Another Scrapbot instance is likely active."
+        )
+
     server = await websockets.serve(_ws_handler, host, port)
     print(f"🎧 Scrapbot WS server running on {host}:{port}", flush=True)
     return server
@@ -76,7 +105,16 @@ async def start_ws_server(host="127.0.0.1", port=8765):
 # Broadcast helper
 # -----------------------
 
-async def _broadcast(payload: dict):
+async def _broadcast(payload: dict, brave_was_launched: bool = False):
+    """
+    Send payload to all connected extensions.
+    If Brave was just launched, wait briefly for the extension to connect.
+    """
+
+    if brave_was_launched:
+        print("⏳ Waiting for Brave extension to connect...", flush=True)
+        await asyncio.sleep(2)
+
     if not _CLIENTS:
         print("⚠️ No extension connected — command skipped", flush=True)
         return
@@ -94,29 +132,41 @@ async def _broadcast(payload: dict):
 # -----------------------
 
 async def search_and_play(query: str):
-    ensure_brave_running()
-    await _broadcast({
-        "action": "search",
-        "query": query,
-    })
+    brave_launched = ensure_brave_running()
+    await _broadcast(
+        {
+            "action": "search",
+            "query": query,
+        },
+        brave_was_launched=brave_launched,
+    )
 
 
 async def play():
-    ensure_brave_running()
-    await _broadcast({
-        "action": "play",
-    })
+    brave_launched = ensure_brave_running()
+    await _broadcast(
+        {
+            "action": "play",
+        },
+        brave_was_launched=brave_launched,
+    )
 
 
 async def pause():
-    ensure_brave_running()
-    await _broadcast({
-        "action": "pause",
-    })
+    brave_launched = ensure_brave_running()
+    await _broadcast(
+        {
+            "action": "pause",
+        },
+        brave_was_launched=brave_launched,
+    )
 
 
 async def next_track():
-    ensure_brave_running()
-    await _broadcast({
-        "action": "next",
-    })
+    brave_launched = ensure_brave_running()
+    await _broadcast(
+        {
+            "action": "next",
+        },
+        brave_was_launched=brave_launched,
+    )
