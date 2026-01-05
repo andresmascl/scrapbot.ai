@@ -85,6 +85,9 @@ async def _ws_handler(ws):
     try:
         async for _ in ws:
             pass
+    except Exception:
+        # Normal disconnect (browser reload, offscreen restart)
+        pass
     finally:
         _CLIENTS.discard(ws)
 

@@ -44,43 +44,15 @@ def get_system_instruction():
         return "You are a helpful assistant."
 
 
-async def transcribe_audio(client, audio_bytes: bytes) -> str:
-    print("✍️ Transcribing...", flush=True)
-
-    try:
-        with io.BytesIO() as wav_buffer:
-            with wave.open(wav_buffer, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(16000)
-                wf.writeframes(audio_bytes)
-
-            response = await client.aio.models.generate_content(
-                model=MODEL_ID,
-                contents=[
-                    types.Part(text="Transcribe the audio exactly."),
-                    types.Part(
-                        inline_data=types.Blob(
-                            data=wav_buffer.getvalue(),
-                            mime_type="audio/wav",
-                        )
-                    ),
-                ],
-            )
-
-        return response.text.strip()
-
-    except Exception as e:
-        print(f"⚠️ STT error: {e}", flush=True)
-        return ""
-
-
 async def process_voice_command(audio_gen):
     """
     Consume audio AFTER wake word.
     Start recording on first detected speech.
     Stop after sustained silence.
     Cancel if no speech starts within timeout.
+
+    SINGLE CALL:
+    Audio -> transcript + intent JSON
     """
 
     # -----------------------
@@ -169,34 +141,62 @@ async def process_voice_command(audio_gen):
 
     audio_bytes = b"".join(frames)
 
-    transcript = await transcribe_audio(client, audio_bytes)
-    if not transcript:
-        return None
-
-    print(f"\n🗣️ Transcript: {transcript}", flush=True)
-    print(f"🤔 Thinking with {MODEL_ID}...", flush=True)
+    print("🤔 Transcribing + inferring intent...", flush=True)
 
     try:
-        response = await client.aio.models.generate_content(
-            model=MODEL_ID,
-            contents=transcript,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-            ),
-        )
+        with io.BytesIO() as wav_buffer:
+            with wave.open(wav_buffer, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(16000)
+                wf.writeframes(audio_bytes)
+
+            response = await client.aio.models.generate_content(
+                model=MODEL_ID,
+                contents=[
+                    types.Part(
+                        text=(
+                            "You are a voice assistant.\n"
+                            "The user speaks either English or Spanish.\n\n"
+                            "Tasks:\n"
+                            "1) Transcribe the audio exactly.\n"
+                            "2) Infer the user's intent.\n\n"
+                            "Return STRICT JSON with this shape:\n"
+                            "{\n"
+                            "  \"transcript\": string,\n"
+                            "  \"intent\": string,\n"
+                            "  \"filter\": string | null,\n"
+                            "  \"feedback\": string | null,\n"
+                            "  \"confidence\": number\n"
+                            "}\n"
+                        )
+                    ),
+                    types.Part(
+                        inline_data=types.Blob(
+                            data=wav_buffer.getvalue(),
+                            mime_type="audio/wav",
+                        )
+                    ),
+                ],
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type="application/json",
+                ),
+            )
 
         raw = response.text or ""
-        print("\n🤖 Raw LLM Response:\n", raw, flush=True)
-
         clean = raw.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean)
+
+        transcript = data.get("transcript")
+        if transcript:
+            print(f"\n🗣️ Transcript: {transcript}", flush=True)
 
         print("\n✅ Parsed JSON:")
         print(json.dumps(data, indent=2), flush=True)
 
+        return data
+
     except Exception as e:
         print(f"❌ LLM error: {e}", flush=True)
         return None
-
-    return data

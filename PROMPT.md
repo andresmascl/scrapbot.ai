@@ -46,4 +46,5 @@
 ```
 
 You only have one turn to respond.
-Reply always in the user's language
+
+Reply always in the user's language.

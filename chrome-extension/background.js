@@ -1,7 +1,5 @@
 async function ensureOffscreen() {
-  if (await chrome.offscreen.hasDocument()) {
-    return;
-  }
+  if (await chrome.offscreen.hasDocument()) return;
 
   await chrome.offscreen.createDocument({
     url: "offscreen.html",
@@ -15,24 +13,45 @@ async function ensureOffscreen() {
 chrome.runtime.onStartup.addListener(ensureOffscreen);
 chrome.runtime.onInstalled.addListener(ensureOffscreen);
 
-// Relay messages from offscreen → content script
+// --------------------------------------------------
+// CONTENT READY HANDSHAKE
+// --------------------------------------------------
+
+const contentReadyResolvers = new Map();
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type === "CONTENT_READY" && sender.tab?.id) {
+    const resolve = contentReadyResolvers.get(sender.tab.id);
+    if (resolve) {
+      resolve();
+      contentReadyResolvers.delete(sender.tab.id);
+    }
+  }
+});
+
+// --------------------------------------------------
+// MAIN RELAY: offscreen → content
+// --------------------------------------------------
+
 chrome.runtime.onMessage.addListener(async (msg) => {
-  const tabs = await chrome.tabs.query({
-    url: "https://www.youtube.com/*"
+  // Find active YouTube tab in current window
+  let [tab] = await chrome.tabs.query({
+    url: "https://www.youtube.com/*",
+    active: true,
+    currentWindow: true,
   });
 
-  let tab;
-
-  if (tabs.length > 0) {
-    tab = tabs[0];
-  } else {
+  // If none, create one
+  if (!tab) {
     tab = await chrome.tabs.create({
       url: "https://www.youtube.com",
-      active: true
+      active: true,
     });
 
-    // Wait for content script to load
-    await new Promise((r) => setTimeout(r, 1500));
+    // Wait for content script to confirm readiness
+    await new Promise((resolve) => {
+      contentReadyResolvers.set(tab.id, resolve);
+    });
   }
 
   try {
