@@ -9,8 +9,16 @@ import reasoner
 
 from config import FRAME_SIZE, PROJECT_ID
 from app_state import listen_state
-from browser import BrowserManager
+from speaker import speak
 
+# WebSocket player interface
+from player import (
+    start_ws_server,
+    search_and_play,
+    play,
+    pause,
+    next_track,
+)
 
 # -----------------------
 # ALSA error suppression
@@ -54,15 +62,18 @@ async def main_loop():
         raise RuntimeError("Missing Google credentials")
 
     # -----------------------
-    # Browser manager
+    # Start WebSocket server
     # -----------------------
-    browser_manager = BrowserManager()
+    await start_ws_server()
+
+    # ⚠️ IMPORTANT:
+    # DO NOT launch Brave here.
+    # Brave must be launched lazily on YouTube intent only.
 
     # -----------------------
     # Audio setup
     # -----------------------
     p = pyaudio.PyAudio()
-
     device_info = p.get_default_input_device_info()
     native_rate = int(device_info["defaultSampleRate"])
 
@@ -87,7 +98,6 @@ async def main_loop():
             if item != "START_SESSION":
                 continue
 
-            # Guard against re-entry
             if not await listen_state.get_global_wake_word():
                 continue
 
@@ -97,20 +107,33 @@ async def main_loop():
             result = await reasoner.process_voice_command(audio_gen)
             print(f"📋 Reasoner returned: {result}", flush=True)
 
-            # -----------------------
-            # Intent handling
-            # -----------------------
             if isinstance(result, dict):
                 intent = result.get("intent")
                 filter_text = result.get("filter")
+                feedback = result.get("feedback")
 
-                if intent == "play_youtube" and filter_text:
-                    print("▶️ Handling play_youtube intent", flush=True)
+                try:
+                    if intent == "play_youtube" and filter_text:
+                        print("▶️ SEARCH + PLAY", flush=True)
+                        await search_and_play(filter_text)
 
-                    try:
-                        await browser_manager.play_youtube(filter_text)
-                    except Exception as e:
-                        print(f"❌ Browser error: {e}", flush=True)
+                    elif intent == "play":
+                        print("▶️ Play", flush=True)
+                        await play()
+
+                    elif intent == "pause":
+                        print("⏸ Pause", flush=True)
+                        await pause()
+
+                    elif intent == "next":
+                        print("⏭ Next track", flush=True)
+                        await next_track()
+
+                except Exception as e:
+                    print(f"❌ Player error: {e}", flush=True)
+
+                if feedback:
+                    await speak(feedback)
 
             print("🔄 Session complete. Re-arming wake word.", flush=True)
             await listen_state.allow_global_wake_word()

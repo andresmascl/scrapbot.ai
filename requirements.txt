@@ -1,26 +1,37 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
+# -------------------------
 # Audio
+# -------------------------
 pyaudio==0.2.14
 numpy>=1.24
 
+# -------------------------
 # Wake word
+# -------------------------
 openwakeword
 onnxruntime
 
+# -------------------------
 # ML / reasoning
+# -------------------------
 torch==2.6.0+cpu
 torchaudio==2.6.0+cpu
 sentence-transformers
 
-
+# -------------------------
 # LLM / config
+# -------------------------
 google-genai[aiohttp]>=1.0.0
 python-dotenv>=1.0.0
 
-# Browser automation
-playwright==1.49.1
+# -------------------------
+# Local IPC (WebSocket over TCP)
+# -------------------------
+websockets>=12.0
 
+# -------------------------
 # Tooling
+# -------------------------
 setuptools>=70.0.0
 wheel

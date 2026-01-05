@@ -14,7 +14,11 @@ from app_state import listen_state
 # -------------------------
 
 READ_CHUNK_SIZE = FRAME_SIZE
-WAKE_SOUND_PATH = "/app/wakeword-confirmed.mp3"
+
+WAKE_SOUND_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "wakeword-confirmed.mp3",
+)
 
 SAMPLE_RATE = 16000
 SAMPLE_WIDTH = 2  # int16
@@ -23,6 +27,7 @@ WAKE_WINDOW_SEC = 1.0
 WAKE_WINDOW_BYTES = int(SAMPLE_RATE * SAMPLE_WIDTH * WAKE_WINDOW_SEC)
 
 PREDICT_EVERY_SEC = 0.2  # 200 ms
+WAKE_COOLDOWN_SEC = 0.6  # feedback suppression
 
 ENABLE_VOLUME_BAR = os.getenv("ENABLE_VOLUME_BAR", "0") == "1"
 
@@ -56,6 +61,25 @@ def resample_int16(data: bytes, src_rate: int, dst_rate: int) -> bytes:
 
     return resampled.tobytes()
 
+
+def play_wake_sound():
+    if not os.path.exists(WAKE_SOUND_PATH):
+        print(f"⚠️ Wake sound not found: {WAKE_SOUND_PATH}", flush=True)
+        return
+
+    try:
+        subprocess.Popen(
+            ["paplay", WAKE_SOUND_PATH],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f"⚠️ Failed to play wake sound: {e}", flush=True)
+
+
+async def wake_cooldown():
+    await asyncio.sleep(WAKE_COOLDOWN_SEC)
+
 # -------------------------
 # Wake-word model
 # -------------------------
@@ -74,26 +98,6 @@ except TypeError:
 wake_model_lock = threading.Lock()
 
 # -------------------------
-# Helpers
-# -------------------------
-
-async def play_wake_sound():
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffplay",
-            "-nodisp",
-            "-autoexit",
-            "-loglevel",
-            "quiet",
-            WAKE_SOUND_PATH,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        await proc.wait()
-    except Exception:
-        pass
-
-# -------------------------
 # Listener
 # -------------------------
 
@@ -107,6 +111,9 @@ async def listen(stream, native_rate):
 
     wake_buffer = bytearray()
     last_predict_time = 0.0
+
+    # 🔒 LOCAL cooldown flag (THIS WAS MISSING)
+    in_wake_cooldown = False
 
     while await listen_state.get_listener_running():
         # -------------------------
@@ -177,17 +184,26 @@ async def listen(stream, native_rate):
             scores = await asyncio.to_thread(_predict)
             score = scores.get(WAKE_KEY, 0.0)
 
-            if score >= WAKE_THRESHOLD:
+            if score >= WAKE_THRESHOLD and not in_wake_cooldown:
                 print(
                     f"\n🔔 Wake word detected "
                     f"(score={score:.3f}, window={WAKE_WINDOW_SEC:.1f}s)",
                     flush=True,
                 )
 
-                await play_wake_sound()
+                in_wake_cooldown = True
 
+                # 🔔 Play wake sound
+                play_wake_sound()
+
+                # 🧹 Reset buffers so sound cannot retrigger
                 wake_buffer.clear()
                 wake_model.reset()
                 last_predict_time = 0.0
 
+                # 🚀 Signal main loop
                 yield "START_SESSION"
+
+                # ⏳ Cooldown to absorb speaker bleed
+                await wake_cooldown()
+                in_wake_cooldown = False
