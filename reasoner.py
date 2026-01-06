@@ -35,6 +35,13 @@ vad_model, _ = torch.hub.load(
     trust_repo=True,
 )
 
+# -----------------------
+# AEC-safe VAD parameters
+# -----------------------
+
+NOISE_ALPHA = 0.95          # slow adaptation
+SILENCE_RELATIVE_K = 1.4    # silence = near noise floor
+
 
 def get_system_instruction():
     try:
@@ -48,11 +55,8 @@ async def process_voice_command(audio_gen):
     """
     Consume audio AFTER wake word.
     Start recording on first detected speech.
-    Stop after sustained silence.
+    Stop after sustained *relative* silence (AEC-safe).
     Cancel if no speech starts within timeout.
-
-    SINGLE CALL:
-    Audio -> transcript + intent JSON
     """
 
     # -----------------------
@@ -74,6 +78,9 @@ async def process_voice_command(audio_gen):
 
     speaking = False
     silence_start = None
+
+    # 🔊 Adaptive noise floor (VAD probability)
+    noise_floor = None
 
     # ⏱️ Start timeout clock
     loop = asyncio.get_running_loop()
@@ -113,23 +120,50 @@ async def process_voice_command(audio_gen):
             except Exception:
                 prob = 0.0
 
-            if prob > float(VAD_THRESHOLD):
+            # -----------------------
+            # Initialize noise floor
+            # -----------------------
+            if noise_floor is None:
+                noise_floor = prob
+
+            # -----------------------
+            # Speech detection
+            # -----------------------
+            if prob > max(float(VAD_THRESHOLD), noise_floor * 2.0):
                 if not speaking:
                     print("🗣️ Speech started", flush=True)
                 speaking = True
                 silence_start = None
                 frames.append(block)
+                continue
 
-            elif speaking:
+            # -----------------------
+            # Update noise floor ONLY when not speaking
+            # -----------------------
+            if not speaking:
+                noise_floor = (
+                    NOISE_ALPHA * noise_floor
+                    + (1 - NOISE_ALPHA) * prob
+                )
+                continue
+
+            # -----------------------
+            # Relative silence detection (AEC-safe)
+            # -----------------------
+            frames.append(block)
+
+            if prob < noise_floor * SILENCE_RELATIVE_K:
                 if silence_start is None:
                     silence_start = loop.time()
 
                 elapsed = (loop.time() - silence_start) * 1000
-                frames.append(block)
 
                 if elapsed > SILENCE_THRESHOLD_MS:
                     print("\n🛑 Silence detected. Processing...", flush=True)
                     break
+            else:
+                silence_start = None
+
         else:
             continue
 

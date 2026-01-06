@@ -45,6 +45,51 @@ def no_alsa_err():
 
 
 # -----------------------
+# AEC device selection
+# -----------------------
+
+def find_aec_input_device(p: pyaudio.PyAudio):
+    """
+    Prefer PipeWire / PulseAudio echo-cancel sources.
+    Falls back to default input if none found.
+    """
+    candidates = []
+
+    for i in range(p.get_device_count()):
+        info = p.get_device_info_by_index(i)
+
+        if info.get("maxInputChannels", 0) < 1:
+            continue
+
+        name = info.get("name", "").lower()
+
+        if any(k in name for k in (
+            "echo",
+            "aec",
+            "cancel",
+            "webrtc",
+        )):
+            candidates.append((i, info))
+
+    if candidates:
+        idx, info = candidates[0]
+        print(
+            f"🎧 Using AEC input device: "
+            f"[{idx}] {info['name']} ({int(info['defaultSampleRate'])} Hz)",
+            flush=True,
+        )
+        return idx, int(info["defaultSampleRate"])
+
+    info = p.get_default_input_device_info()
+    print(
+        f"⚠️ AEC device not found. Falling back to default mic: "
+        f"{info['name']} ({int(info['defaultSampleRate'])} Hz)",
+        flush=True,
+    )
+    return info["index"], int(info["defaultSampleRate"])
+
+
+# -----------------------
 # Main loop
 # -----------------------
 
@@ -66,22 +111,18 @@ async def main_loop():
     # -----------------------
     await start_ws_server()
 
-    # ⚠️ IMPORTANT:
-    # DO NOT launch Brave here.
-    # Brave must be launched lazily on YouTube intent only.
-
     # -----------------------
-    # Audio setup
+    # Audio setup (AEC)
     # -----------------------
     p = pyaudio.PyAudio()
-    device_info = p.get_default_input_device_info()
-    native_rate = int(device_info["defaultSampleRate"])
+    device_index, native_rate = find_aec_input_device(p)
 
     stream = p.open(
         format=pyaudio.paInt16,
         channels=1,
         rate=native_rate,
         input=True,
+        input_device_index=device_index,
         frames_per_buffer=FRAME_SIZE,
     )
 
@@ -101,7 +142,16 @@ async def main_loop():
             if not await listen_state.get_global_wake_word():
                 continue
 
+            # 🔒 Block re-triggering
             await listen_state.block_global_wake_word()
+
+            # ⏸️ CRITICAL FIX:
+            # Pause playback so silence becomes observable
+            try:
+                await pause()
+            except Exception as e:
+                print(f"⚠️ Failed to pause playback: {e}", flush=True)
+
             print("🛰️ Listening for command...", flush=True)
 
             result = await reasoner.process_voice_command(audio_gen)
@@ -134,6 +184,12 @@ async def main_loop():
 
                 if feedback:
                     await speak(feedback)
+
+            # ▶️ Resume playback after command
+            try:
+                await play()
+            except Exception:
+                pass
 
             print("🔄 Session complete. Re-arming wake word.", flush=True)
             await listen_state.allow_global_wake_word()
