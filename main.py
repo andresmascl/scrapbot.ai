@@ -136,13 +136,13 @@ async def main_loop():
                         print("▶️ SEARCH + PLAY", flush=True)
                         await search_and_play(filter_text)
 
-                    elif intent == "play":
+                    elif intent == "resume_youtube":
                         await play()
 
-                    elif intent == "pause":
+                    elif intent == "pause_youtube":
                         await pause()
 
-                    elif intent == "next":
+                    elif intent == "next_youtube":
                         await next_track()
 
                 except Exception as e:

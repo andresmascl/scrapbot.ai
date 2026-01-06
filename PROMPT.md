@@ -18,6 +18,7 @@
 #### **play_youtube**: "User wants the Assistant to play a Youtube video locally",
 #### **pause_youtube**: "User wants the Assistant to pause the current Youtube video locally",
 #### **resume_youtube**: "User wants the Assistant to resume playing the current Youtube video locally",
+#### **next_youtube**: "User wants the Assistant to play the next Youtube video locally",
 #### **provide_info**: "User Wants the Assistant to Provide General Information About a Topic"
 
 
