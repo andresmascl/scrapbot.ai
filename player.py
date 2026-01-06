@@ -26,9 +26,6 @@ def is_port_in_use(host: str, port: int) -> bool:
 
 
 def is_brave_running() -> bool:
-    """
-    Returns True if at least one Brave process is running.
-    """
     try:
         subprocess.check_output(
             ["pgrep", "-f", "brave-browser"],
@@ -47,7 +44,6 @@ def ensure_brave_running() -> bool:
         True  -> Brave was launched by this call
         False -> Brave was already running
     """
-
     if not shutil.which("brave-browser"):
         print("❌ Brave browser not found in PATH", flush=True)
         return False
@@ -67,8 +63,7 @@ def ensure_brave_running() -> bool:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
-
-        print("🌐 Brave launched (no running instance detected)", flush=True)
+        print("🌐 Brave launched", flush=True)
         return True
 
     except Exception as e:
@@ -86,7 +81,6 @@ async def _ws_handler(ws):
         async for _ in ws:
             pass
     except Exception:
-        # Normal disconnect (browser reload, offscreen restart)
         pass
     finally:
         _CLIENTS.discard(ws)
@@ -95,8 +89,7 @@ async def _ws_handler(ws):
 async def start_ws_server(host=WS_HOST, port=WS_PORT):
     if is_port_in_use(host, port):
         raise RuntimeError(
-            f"WebSocket server already running on {host}:{port}. "
-            "Another Scrapbot instance is likely active."
+            f"WebSocket server already running on {host}:{port}"
         )
 
     server = await websockets.serve(_ws_handler, host, port)
@@ -109,13 +102,7 @@ async def start_ws_server(host=WS_HOST, port=WS_PORT):
 # -----------------------
 
 async def _broadcast(payload: dict, brave_was_launched: bool = False):
-    """
-    Send payload to all connected extensions.
-    If Brave was just launched, wait briefly for the extension to connect.
-    """
-
     if brave_was_launched:
-        print("⏳ Waiting for Brave extension to connect...", flush=True)
         await asyncio.sleep(2)
 
     if not _CLIENTS:
@@ -123,7 +110,6 @@ async def _broadcast(payload: dict, brave_was_launched: bool = False):
         return
 
     msg = json.dumps(payload)
-
     await asyncio.gather(
         *(ws.send(msg) for ws in _CLIENTS),
         return_exceptions=True,
@@ -131,16 +117,13 @@ async def _broadcast(payload: dict, brave_was_launched: bool = False):
 
 
 # -----------------------
-# Public API (YouTube-related)
+# Public API (YouTube only)
 # -----------------------
 
 async def search_and_play(query: str):
     brave_launched = ensure_brave_running()
     await _broadcast(
-        {
-            "action": "search",
-            "query": query,
-        },
+        {"action": "search", "query": query},
         brave_was_launched=brave_launched,
     )
 
@@ -148,28 +131,23 @@ async def search_and_play(query: str):
 async def play():
     brave_launched = ensure_brave_running()
     await _broadcast(
-        {
-            "action": "play",
-        },
+        {"action": "play"},
         brave_was_launched=brave_launched,
     )
 
 
 async def pause():
-    brave_launched = ensure_brave_running()
-    await _broadcast(
-        {
-            "action": "pause",
-        },
-        brave_was_launched=brave_launched,
-    )
+    # NOTE: pause only makes sense if YouTube is already in use
+    if not is_brave_running():
+        print("⏸ Pause ignored — browser not running", flush=True)
+        return
+
+    await _broadcast({"action": "pause"})
 
 
 async def next_track():
     brave_launched = ensure_brave_running()
     await _broadcast(
-        {
-            "action": "next",
-        },
+        {"action": "next"},
         brave_was_launched=brave_launched,
     )

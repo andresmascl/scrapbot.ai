@@ -37,7 +37,6 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === "search" && msg.query) {
     console.log("🎯 New search request:", msg.query);
 
-    // ALWAYS override previous intent
     setState({
       phase: "search",
       query: msg.query,
@@ -62,43 +61,45 @@ chrome.runtime.onMessage.addListener((msg) => {
   // -------------------------
   // SEARCH RESULTS PAGE
   // -------------------------
-  if (
-    state.phase === "search" &&
-    location.pathname === "/results"
-  ) {
+  if (state.phase === "search" && location.pathname === "/results") {
     console.log("📄 Results page loaded");
 
     await waitFor(
-      () => document.querySelector("ytd-video-renderer a#thumbnail"),
+      () => document.querySelector("ytd-video-renderer"),
       20000
     );
 
-    const first = document.querySelector(
-      "ytd-video-renderer a#thumbnail"
+    const renderers = Array.from(
+      document.querySelectorAll("ytd-video-renderer")
     );
 
-    if (!first) {
-      console.warn("❌ No search results found");
+    let targetLink = null;
+
+    for (const renderer of renderers) {
+      const link = renderer.querySelector('a[href^="/watch"]');
+      if (link) {
+        targetLink = link;
+        break;
+      }
+    }
+
+    if (!targetLink) {
+      console.warn("❌ No valid /watch video found in results");
       clearState();
       return;
     }
 
-    console.log("▶️ Clicking first result");
-    setState({
-      phase: "play",
-    });
+    console.log("▶️ Clicking first non-shorts video");
+    setState({ phase: "play" });
 
-    first.click();
+    targetLink.click();
     return;
   }
 
   // -------------------------
   // VIDEO PAGE
   // -------------------------
-  if (
-    state.phase === "play" &&
-    location.pathname === "/watch"
-  ) {
+  if (state.phase === "play" && location.pathname === "/watch") {
     console.log("🎬 Video page loaded");
 
     await waitFor(() => document.querySelector("video"), 20000);
@@ -118,8 +119,6 @@ function forceSearch(query) {
     encodeURIComponent(query);
 
   console.log("🔍 Forcing search:", searchUrl);
-
-  // Always navigate — NEVER reuse existing results
   location.href = searchUrl;
 }
 
