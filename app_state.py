@@ -14,7 +14,6 @@ class ListenState:
     # -------------------------
     # Wake-word control
     # -------------------------
-
     async def get_global_wake_word(self) -> bool:
         async with self._wake_lock:
             return self._global_wake_allowed
@@ -28,9 +27,8 @@ class ListenState:
             self._global_wake_allowed = True
 
     # -------------------------
-    # Listener run control (NEW)
+    # Listener run control
     # -------------------------
-
     async def get_listener_running(self) -> bool:
         async with self._listener_lock:
             return self._listener_running

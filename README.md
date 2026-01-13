@@ -50,21 +50,21 @@ make clean      # Remove venv and caches
 ### What Scrapbot.ai Does
 
 - Continuously listens to microphone input
-- Detects a wake word ("hey mycroft")
+- Detects a generic wake word ("hey Mycroft")
 - Buffers and records speech until silence is detected
 - Converts speech to text (cloud STT)
-- Infers user intent using an LLM
+- Infers user intent using a Google LLM (Vertex Multimodal Live AI)
 - Produces structured JSON intent responses
-- Executes actions based on intent
+- Executes actions based on intent, including YouTube search and playback via a real browser
 - Replies using local neural TTS
-- Controls a real, visible browser (YouTube search & playback)
 
 ### What Scrapbot.ai Does NOT Do (yet)
 
 - Smart-home integrations
-- Mobile app / LAN server
-- Custom-trained wake word
 - Multi-turn memory beyond a session
+- Custom "Hey Scrapbot" wake word (listed as a TODO)
+- Mobile app / LAN server integration (listed as a TODO)
+- Host volume control (listed as a TODO)
 
 For current changes and roadmap, see [CHANGELOG.md](./CHANGELOG.md).
 
@@ -78,19 +78,17 @@ Wake word detection (local)
 ↓
 Silence detection (local)
 ↓
-Speech-to-Text (cloud)
-↓
-Intent reasoning (cloud LLM)
+Intent reasoning + Speech-to-Text (cloud LLM)
 ↓
 Structured JSON response
 ↓
-Local action execution
-↓
 Text-to-Speech (local)
+↓
+Local action execution
 
 ## Browser Automation
 
-Scrapbot uses **Playwright (Chromium)** in **non-headless mode** to control a real browser window.
+Scrapbot is meant to control a local Brave browser instance by establishing a socket connection with the browser through a chrome extension.
 
 **Current capabilities:**
 - Open YouTube
@@ -106,7 +104,7 @@ This runs **directly on the host OS**, not inside Docker.
 
 SCRAPBOT.AI/
 ├── creds/
-├── tests/
+├── chrome-extension/
 ├── .env
 ├── .env.demo
 ├── listener.py
@@ -116,7 +114,12 @@ SCRAPBOT.AI/
 ├── Makefile
 ├── README.md
 ├── reasoner.py
-└── requirements.txt
+├── requirements.txt
+├── config.py
+├── speaker.py
+├── asound.conf
+├── PROMPT.md
+└── SEQUENCEDIAGRAM.md
 
 ### Key Files
 
@@ -126,6 +129,12 @@ SCRAPBOT.AI/
 - `app_state.py` — shared async application state
 - `main.py` — event loop and orchestration
 - `Makefile` — environment setup and execution
+- `chrome-extension/` — Chrome extension files for browser automation
+- `config.py` — runtime constants and defaults
+- `speaker.py` — Text-to-Speech (TTS) output
+- `asound.conf` — ALSA sound server configuration for audio input/output
+- `PROMPT.md` — Prompt file sent to Vertex Multimodal Live AI
+- `SEQUENCEDIAGRAM.md` — General system workflow diagram
 
 ---
 
@@ -140,7 +149,7 @@ SCRAPBOT.AI/
 
 ### AI / NLP
 - Google Speech-to-Text (cloud)
-- Google Gemini (intent reasoning)
+- Google Vertex Multimodal Live AI (intent reasoning)
 - Structured JSON intent contracts
 
 ### Voice Output
@@ -223,12 +232,15 @@ Core pipeline is stable. Interfaces may evolve.
 
 ### Todo
 
-- Audible wake-word confirmation sound
-- Confidence-based clarification prompts
-- Expanded intent library
-- Multi-command sessions
-- Custom wake-word training
-- Streaming STT for lower latency
+- [ ] Implement Volume Control
+- [ ] Implement Custom "Hey Scrapbot" Wakeword
+- [ ] Update Scrapbot.ai Voice to be More Natural
+- [ ] Implement LAN server to communicate with the bot?
+- [ ] Audible wake-word confirmation sound
+- [ ] Confidence-based clarification prompts
+- [ ] Expanded intent library
+- [ ] Multi-command sessions
+- [ ] Streaming STT for lower latency
 
 ---
 

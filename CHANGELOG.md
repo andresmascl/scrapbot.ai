@@ -1,14 +1,13 @@
 ## What Scrapbot.ai Does
 - Continuously listens to microphone input
 - Detects a generic wake word ("hey Mycroft")
-- Transforms STT using Google
+- Sends User Voice Command to a Google LLM
 - Prints and Speaks out LLM Response using Local TTS
+- Allows users to Search and Play Videos on Youtube
 
 
 ## TODO:
-1. De-containerize application in attempt to use local browser binary and user session
-2. Implement Youtube Play Browser automation
-3. Implement Host Volume Control
-4. Implement Custom Scrapbot.ai wakeword
-5. Add extra wake-word filter at LLM level?
-6. Mobile app to serve over LAN?
+1. Implement Volume Control
+2. Implement Custom "Hey Scrapbot" Wakeword
+3. Update Scrapbot.ai Voice to be More Natural
+4. Implement LAN server to communicate with the bot?
