@@ -8,6 +8,7 @@
 ```json
 {
 	"intent": "play_youtube",
+	"language": "en",
 	"filter": "Cherub Rock by The Smashing Pumpkins",
 	"feedback": "Playing 'Cherub Rock by The Smashing Pumpkins' on Youtube",
 	"confidence": 0.3
@@ -28,6 +29,11 @@
 	"intent": {
 		"type": "string",
 		"description": "Identifier of the Requested Action or Reasoning Task (e.g. play_youtube)",
+		"required": true
+	},
+	"language": {
+		"type": "string",
+		"description": "Language code of the generated response ('en' or 'es')",
 		"required": true
 	},
 	"filter": {

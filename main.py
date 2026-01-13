@@ -195,6 +195,7 @@ async def main_loop():
                 intent = result.get("intent")
                 filter_text = result.get("filter")
                 feedback = result.get("feedback")
+                language = result.get("language", "en")
 
                 try:
                     if intent == "play_youtube" and filter_text:
@@ -214,7 +215,7 @@ async def main_loop():
                     logging.error(f"❌ Player error: {e}")
 
                 if feedback:
-                    await speak(feedback)
+                    await speak(feedback, language=language)
 
             logging.info("🔄 Session complete. Re-arming wake word.")
             await listen_state.allow_global_wake_word()

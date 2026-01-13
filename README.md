@@ -30,15 +30,13 @@ Scrapbot is designed to run **directly on Linux**, not inside Docker.
 ```bash
 make venv
 make deps
-make browsers
 make run
 
 # Available Commands
 
 make help       # Show available commands
 make venv       # Create Python virtual environment
-make deps       # Install Python dependencies
-make browsers   # Install Playwright Chromium
+make deps       # Install Python dependencies and Piper TTS
 make run        # Run Scrapbot
 make clean      # Remove venv and caches
 ```
@@ -109,7 +107,7 @@ SCRAPBOT.AI/
 ├── .env.demo
 ├── listener.py
 ├── main.py
-├── browser.py
+├── player.py
 ├── app_state.py
 ├── Makefile
 ├── README.md
@@ -125,7 +123,7 @@ SCRAPBOT.AI/
 
 - `listener.py` — audio capture, wake-word detection, silence detection
 - `reasoner.py` — STT handling, intent reasoning, JSON responses
-- `browser.py` — Playwright browser control
+- `player.py` — WebSocket browser control
 - `app_state.py` — shared async application state
 - `main.py` — event loop and orchestration
 - `Makefile` — environment setup and execution
@@ -153,7 +151,7 @@ SCRAPBOT.AI/
 - Structured JSON intent contracts
 
 ### Voice Output
-- Local TTS (CPU-based)
+- Local Neural TTS (Piper, Bilingual: English/Spanish)
 
 ### Browser Automation
 - Brave (bundled, non-headless)
@@ -269,7 +267,7 @@ Clear separation of concerns:
 
 - `listener.py` — audio + wake word
 - `reasoner.py` — reasoning + intent
-- `browser.py` — execution layer
+- `player.py` — execution layer
 - `main.py` — orchestration
 
 This makes the system easy to debug, extend, or replace piece-by-piece.

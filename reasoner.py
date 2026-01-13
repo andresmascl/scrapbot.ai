@@ -196,6 +196,7 @@ async def process_voice_command(audio_gen):
                             "Return STRICT JSON with this shape:\n"
                             "{\n"
                             "  \"transcript\": string,\n"
+                            "  \"language\": \"en\" | \"es\",\n"
                             "  \"intent\": string,\n"
                             "  \"filter\": string | null,\n"
                             "  \"feedback\": string | null,\n"

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import Optional
 
 from app_state import listen_state
@@ -8,14 +9,17 @@ from app_state import listen_state
 # Speaker configuration
 # -----------------------
 
-ESPEAK_BIN = "espeak-ng"
+# Piper TTS Configuration
+PIPER_DIR = "piper_tts"
+PIPER_BIN = os.path.join(PIPER_DIR, "piper")
 
-# We generate WAV and play it synchronously so:
-# - no orphan ffplay processes
-# - PipeWire apps close cleanly
+# Voice Models
+VOICE_EN = os.path.join(PIPER_DIR, "en_US-lessac-medium.onnx")
+VOICE_ES = os.path.join(PIPER_DIR, "es_ES-sharvard-medium.onnx")
+
+# Playback
 APLAY_BIN = "aplay"
-
-SAMPLE_RATE = 16000
+SAMPLE_RATE = 22050  # Piper medium voices are typically 22050 Hz
 CHANNELS = 1
 FORMAT = "S16_LE"
 
@@ -24,51 +28,71 @@ FORMAT = "S16_LE"
 # Internal helpers
 # -----------------------
 
-async def _tts_to_wav(text: str) -> bytes:
+async def _tts_to_wav(text: str, language: str = "en") -> bytes:
     """
-    Convert text to WAV audio bytes using espeak-ng.
+    Convert text to raw PCM audio bytes using Piper TTS.
     """
-    proc = await asyncio.create_subprocess_exec(
-        ESPEAK_BIN,
-        "--stdout",
-        "-s", "170",
-        "-v", "en",
-        text,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
+    model = VOICE_ES if language == "es" else VOICE_EN
 
-    audio = await proc.stdout.read()
-    await proc.wait()
-    return audio
+    if not os.path.exists(PIPER_BIN):
+        logging.error(f"❌ Piper binary not found at {PIPER_BIN}")
+        return b""
+
+    if not os.path.exists(model):
+        logging.error(f"❌ Voice model not found: {model}")
+        return b""
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            PIPER_BIN,
+            "--model", model,
+            "--output_raw",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+
+        stdout, _ = await proc.communicate(input=text.encode("utf-8"))
+        return stdout
+        
+    except Exception as e:
+        logging.error(f"❌ Piper TTS execution failed: {e}")
+        return b""
 
 
 async def _play_wav(audio: bytes):
     """
-    Play WAV bytes via aplay (clean ALSA / PipeWire lifecycle).
+    Play raw PCM bytes via aplay (clean ALSA / PipeWire lifecycle).
     """
-    proc = await asyncio.create_subprocess_exec(
-        APLAY_BIN,
-        "-q",
-        "-f", FORMAT,
-        "-c", str(CHANNELS),
-        "-r", str(SAMPLE_RATE),
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
+    if not audio:
+        return
 
-    proc.stdin.write(audio)
-    await proc.stdin.drain()
-    proc.stdin.close()
-    await proc.wait()
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            APLAY_BIN,
+            "-q",
+            "-f", FORMAT,
+            "-c", str(CHANNELS),
+            "-r", str(SAMPLE_RATE),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+
+        proc.stdin.write(audio)
+        await proc.stdin.drain()
+        proc.stdin.close()
+        await proc.wait()
+
+    except Exception as e:
+        logging.error(f"❌ Audio playback failed: {e}")
 
 
 # -----------------------
 # Public API (used by main.py)
 # -----------------------
 
-async def speak(text: Optional[str]):
+async def speak(text: Optional[str], language: str = "en"):
     """
     Speak text safely:
     - pauses listener
@@ -82,7 +106,10 @@ async def speak(text: Optional[str]):
     await listen_state.block_global_wake_word()
 
     try:
-        audio = await _tts_to_wav(text)
+        # Generate audio
+        audio = await _tts_to_wav(text, language)
+        
+        # Play audio
         if audio:
             await _play_wav(audio)
 

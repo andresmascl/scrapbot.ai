@@ -2,7 +2,7 @@
 - Continuously listens to microphone input
 - Detects a generic wake word ("hey Mycroft")
 - Sends User Voice Command to a Google LLM
-- Prints and Speaks out LLM Response using Local TTS
+- Prints and Speaks out LLM Response using Local Neural TTS (Bilingual Piper)
 - Allows users to Search and Play Videos on Youtube
 
 
