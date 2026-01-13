@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import io
 import wave
@@ -27,7 +28,7 @@ SILENCE_THRESHOLD_MS = int(float(SILENCE_SECONDS) * 1000)
 # ⏱️ Max time to wait for speech AFTER wake word
 COMMAND_START_TIMEOUT_SEC = 3.0
 
-print("Loading Silero VAD in reasoner...", flush=True)
+logging.info("Loading Silero VAD in reasoner...")
 vad_model, _ = torch.hub.load(
     repo_or_dir="snakers4/silero-vad",
     model="silero_vad",
@@ -86,7 +87,7 @@ async def process_voice_command(audio_gen):
     loop = asyncio.get_running_loop()
     start_time = loop.time()
 
-    print("👂 Listening for command (reasoner)...", flush=True)
+    logging.info("👂 Listening for command (reasoner)...")
 
     async for chunk in audio_gen:
         if isinstance(chunk, str):
@@ -96,10 +97,9 @@ async def process_voice_command(audio_gen):
         if not speaking:
             elapsed = loop.time() - start_time
             if elapsed > COMMAND_START_TIMEOUT_SEC:
-                print(
+                logging.warning(
                     f"⏱️ No speech detected after "
-                    f"{COMMAND_START_TIMEOUT_SEC:.1f}s — cancelling",
-                    flush=True,
+                    f"{COMMAND_START_TIMEOUT_SEC:.1f}s — cancelling"
                 )
                 return None
 
@@ -131,7 +131,7 @@ async def process_voice_command(audio_gen):
             # -----------------------
             if prob > max(float(VAD_THRESHOLD), noise_floor * 2.0):
                 if not speaking:
-                    print("🗣️ Speech started", flush=True)
+                    logging.info("🗣️ Speech started")
                 speaking = True
                 silence_start = None
                 frames.append(block)
@@ -159,7 +159,7 @@ async def process_voice_command(audio_gen):
                 elapsed = (loop.time() - silence_start) * 1000
 
                 if elapsed > SILENCE_THRESHOLD_MS:
-                    print("\n🛑 Silence detected. Processing...", flush=True)
+                    logging.info("🛑 Silence detected. Processing...")
                     break
             else:
                 silence_start = None
@@ -170,12 +170,12 @@ async def process_voice_command(audio_gen):
         break  # silence detected
 
     if not frames:
-        print("⚠️ No speech captured.", flush=True)
+        logging.warning("⚠️ No speech captured.")
         return None
 
     audio_bytes = b"".join(frames)
 
-    print("🤔 Transcribing + inferring intent...", flush=True)
+    logging.info("🤔 Transcribing + inferring intent...")
 
     try:
         with io.BytesIO() as wav_buffer:
@@ -224,13 +224,13 @@ async def process_voice_command(audio_gen):
 
         transcript = data.get("transcript")
         if transcript:
-            print(f"\n🗣️ Transcript: {transcript}", flush=True)
+            logging.info(f"🗣️ Transcript: {transcript}")
 
-        print("\n✅ Parsed JSON:")
-        print(json.dumps(data, indent=2), flush=True)
+        logging.info("✅ Parsed JSON:")
+        logging.info(json.dumps(data, indent=2))
 
         return data
 
     except Exception as e:
-        print(f"❌ LLM error: {e}", flush=True)
+        logging.error(f"❌ LLM error: {e}")
         return None

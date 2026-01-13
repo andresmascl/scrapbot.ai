@@ -1,5 +1,5 @@
 import asyncio
-import subprocess
+import logging
 from typing import Optional
 
 from app_state import listen_state
@@ -87,7 +87,7 @@ async def speak(text: Optional[str]):
             await _play_wav(audio)
 
     except Exception as e:
-        print(f"⚠️ Speaker error (ignored): {e}", flush=True)
+        logging.warning(f"⚠️ Speaker error (ignored): {e}")
 
     finally:
         await listen_state.allow_listener()

@@ -7,6 +7,15 @@ load_dotenv(find_dotenv())
 AUDIO_RATE = 16000
 CHANNELS = 1
 FRAME_SIZE = 1024
+AUDIO_DEVICE_INDEX = os.getenv("AUDIO_DEVICE_INDEX")
+if AUDIO_DEVICE_INDEX:
+    try:
+        AUDIO_DEVICE_INDEX = int(AUDIO_DEVICE_INDEX)
+    except ValueError:
+        AUDIO_DEVICE_INDEX = None
+
+# --- LOGGING ---
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # --- WAKE WORD ---
 WAKE_KEY = "hey_mycroft"

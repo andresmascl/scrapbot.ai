@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import numpy as np
 import subprocess
 import threading
@@ -64,7 +65,7 @@ def resample_int16(data: bytes, src_rate: int, dst_rate: int) -> bytes:
 
 def play_wake_sound():
     if not os.path.exists(WAKE_SOUND_PATH):
-        print(f"⚠️ Wake sound not found: {WAKE_SOUND_PATH}", flush=True)
+        logging.warning(f"⚠️ Wake sound not found: {WAKE_SOUND_PATH}")
         return
 
     try:
@@ -74,7 +75,7 @@ def play_wake_sound():
             stderr=subprocess.DEVNULL,
         )
     except Exception as e:
-        print(f"⚠️ Failed to play wake sound: {e}", flush=True)
+        logging.error(f"⚠️ Failed to play wake sound: {e}")
 
 
 async def wake_cooldown():
@@ -84,14 +85,13 @@ async def wake_cooldown():
 # Wake-word model
 # -------------------------
 
-print("Loading Wake Word model...", flush=True)
+logging.info("Loading Wake Word model...")
 
 try:
     wake_model = Model(wakeword_models=[WAKE_KEY])
 except TypeError:
-    print(
-        f"⚠️ Argument mismatch. Loading default models and filtering for {WAKE_KEY}...",
-        flush=True,
+    logging.warning(
+        f"⚠️ Argument mismatch. Loading default models and filtering for {WAKE_KEY}..."
     )
     wake_model = Model()
 
@@ -102,11 +102,10 @@ wake_model_lock = threading.Lock()
 # -------------------------
 
 async def listen(stream, native_rate):
-    print(
-        f"\n🎙️ Listener running — input={native_rate}Hz → 16kHz | "
+    logging.info(
+        f"🎙️ Listener running — input={native_rate}Hz → 16kHz | "
         f"FRAME_SIZE={FRAME_SIZE} | "
-        f"WAKE_WINDOW_BYTES={WAKE_WINDOW_BYTES}\n",
-        flush=True,
+        f"WAKE_WINDOW_BYTES={WAKE_WINDOW_BYTES}"
     )
 
     wake_buffer = bytearray()
@@ -145,9 +144,10 @@ async def listen(stream, native_rate):
             filled = int(min(rms, 2000) / 2000 * 30)
 
             print(
-                f"\033[F\033[K"
+                f"\r\033[K"
                 f"🔊 RMS:{rms:5d} |{'█' * filled:<30} "
                 f"BUF:{len(wake_buffer):6d}/{WAKE_WINDOW_BYTES}",
+                end="",
                 flush=True,
             )
 
@@ -185,10 +185,13 @@ async def listen(stream, native_rate):
             score = scores.get(WAKE_KEY, 0.0)
 
             if score >= WAKE_THRESHOLD and not in_wake_cooldown:
-                print(
-                    f"\n🔔 Wake word detected "
-                    f"(score={score:.3f}, window={WAKE_WINDOW_SEC:.1f}s)",
-                    flush=True,
+                # Break the volume bar line
+                if ENABLE_VOLUME_BAR:
+                    print("", flush=True)
+
+                logging.info(
+                    f"🔔 Wake word detected "
+                    f"(score={score:.3f}, window={WAKE_WINDOW_SEC:.1f}s)"
                 )
 
                 in_wake_cooldown = True

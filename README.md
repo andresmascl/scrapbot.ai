@@ -156,12 +156,10 @@ SCRAPBOT.AI/
 - Local TTS (CPU-based)
 
 ### Browser Automation
-- Playwright
-- Chromium (bundled, non-headless)
+- Brave (bundled, non-headless)
 
 ### Platform
 - Linux (Debian / Ubuntu)
-- **No Docker required**
 
 ---
 
@@ -172,6 +170,17 @@ Configuration is explicit and file-based:
 - `.env` — credentials and runtime settings (not committed)
 - `.env.demo` — template for required variables
 - `config.py` — runtime constants and defaults
+
+### Environment Variables
+
+**Core Settings:**
+- `GCP_PROJECT_ID`: Your Google Cloud Project ID.
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account key.
+
+**Audio & System:**
+- `AUDIO_DEVICE_INDEX`: (Optional) Force a specific input device index (integer). If not set or invalid, Scrapbot auto-detects the best AEC microphone.
+- `LOG_LEVEL`: Set logging verbosity (e.g., `DEBUG`, `INFO`, `WARNING`). Default is `INFO`.
+- `ENABLE_VOLUME_BAR`: Set to `1` to show the real-time volume meter in the terminal.
 
 ---
 
