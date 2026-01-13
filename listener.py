@@ -78,9 +78,6 @@ def play_wake_sound():
         logging.error(f"⚠️ Failed to play wake sound: {e}")
 
 
-async def wake_cooldown():
-    await asyncio.sleep(WAKE_COOLDOWN_SEC)
-
 # -------------------------
 # Wake-word model
 # -------------------------
@@ -207,6 +204,4 @@ async def listen(stream, native_rate):
                 # 🚀 Signal main loop
                 yield "START_SESSION"
 
-                # ⏳ Cooldown to absorb speaker bleed
-                await wake_cooldown()
                 in_wake_cooldown = False
