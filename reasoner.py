@@ -10,6 +10,7 @@ from google import genai
 from google.genai import types
 
 from config import (
+    COMMAND_TIMEOUT,
     PROJECT_ID,
     MODEL_NAME,
     SILENCE_SECONDS,
@@ -24,9 +25,6 @@ from app_state import listen_state
 LOCATION = os.getenv("GCP_REGION", "us-central1")
 MODEL_ID = os.getenv("VERTEX_MODEL_NAME", MODEL_NAME)
 SILENCE_THRESHOLD_MS = int(float(SILENCE_SECONDS) * 1000)
-
-# ⏱️ Max time to wait for speech AFTER wake word
-COMMAND_START_TIMEOUT_SEC = 3.0
 
 logging.info("Loading Silero VAD in reasoner...")
 vad_model, _ = torch.hub.load(
@@ -96,10 +94,10 @@ async def process_voice_command(audio_gen):
         # ⛔ Timeout: no speech detected
         if not speaking:
             elapsed = loop.time() - start_time
-            if elapsed > COMMAND_START_TIMEOUT_SEC:
+            if elapsed > COMMAND_TIMEOUT:
                 logging.warning(
                     f"⏱️ No speech detected after "
-                    f"{COMMAND_START_TIMEOUT_SEC:.1f}s — cancelling"
+                    f"{COMMAND_TIMEOUT:.1f}s — cancelling"
                 )
                 return None
 

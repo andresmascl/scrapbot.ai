@@ -5,15 +5,15 @@ import shutil
 import socket
 import websockets
 
+from config import (
+    BRAVE_BINARY,
+    BRAVE_PROFILE,
+    BRAVE_USER_DATA_DIR,
+    WS_HOST,
+    WS_PORT,
+)
+
 _CLIENTS: set[websockets.WebSocketServerProtocol] = set()
-
-# Brave root data directory (NOT a profile subdir)
-BRAVE_USER_DATA_DIR = "/home/a-mo/.config/BraveSoftware/Brave-Browser"
-BRAVE_PROFILE = "Profile 2"
-BRAVE_BINARY = "/usr/bin/brave-browser"
-
-WS_HOST = "127.0.0.1"
-WS_PORT = 8765
 
 
 # -----------------------

@@ -50,4 +50,8 @@
 
 You only have one turn to respond.
 
-Reply always in the user's language.
+Possible languages used are either English, Spanish, or a mixture of English and Spanish.
+
+Reply always in the language used by the user to make the command.
+
+If user used a mixture of English and Spanish, reply in Spanish

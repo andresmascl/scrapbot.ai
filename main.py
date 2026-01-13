@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import subprocess
+import time
 import pyaudio
 from ctypes import *
 from contextlib import contextmanager
@@ -58,6 +60,37 @@ def no_alsa_err():
 # -----------------------
 # AEC device selection
 # -----------------------
+
+def ensure_echo_cancellation():
+    """
+    Checks if PulseAudio echo-cancel module is loaded.
+    If not, attempts to load it.
+    """
+    try:
+        # Check if module is already loaded
+        output = subprocess.check_output(
+            ["pactl", "list", "modules", "short"], text=True
+        )
+        if "module-echo-cancel" in output:
+            logging.info("✅ Echo cancellation module already loaded.")
+            return
+
+        logging.info("🛠️ Loading PulseAudio echo cancellation module...")
+        subprocess.run(
+            ["pactl", "load-module", "module-echo-cancel"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        # Give PulseAudio a moment to register the new sink/source
+        time.sleep(1.0)
+        logging.info("✅ Echo cancellation module loaded.")
+
+    except subprocess.CalledProcessError:
+        logging.warning("⚠️ Failed to load module-echo-cancel. Is PulseAudio running?")
+    except FileNotFoundError:
+        logging.warning("⚠️ 'pactl' command not found. Cannot auto-load echo cancellation.")
+
 
 def find_aec_input_device(p: pyaudio.PyAudio):
     if AUDIO_DEVICE_INDEX is not None:
@@ -123,6 +156,9 @@ async def main_loop():
         raise RuntimeError("Missing Google credentials")
 
     await start_ws_server()
+
+    # Ensure AEC is available before initializing PyAudio
+    ensure_echo_cancellation()
 
     p = pyaudio.PyAudio()
     device_index, native_rate = find_aec_input_device(p)
