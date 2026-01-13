@@ -73,18 +73,21 @@ def ensure_echo_cancellation():
         )
         if "module-echo-cancel" in output:
             logging.info("✅ Echo cancellation module already loaded.")
-            return
+        else:
+            logging.info("🛠️ Loading PulseAudio echo cancellation module...")
+            subprocess.run(
+                ["pactl", "load-module", "module-echo-cancel"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Give PulseAudio a moment to register the new sink/source
+            time.sleep(1.0)
+            logging.info("✅ Echo cancellation module loaded.")
 
-        logging.info("🛠️ Loading PulseAudio echo cancellation module...")
-        subprocess.run(
-            ["pactl", "load-module", "module-echo-cancel"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        # Give PulseAudio a moment to register the new sink/source
-        time.sleep(1.0)
-        logging.info("✅ Echo cancellation module loaded.")
+        logging.info("🔄 Setting default source/sink to echo-cancel...")
+        subprocess.run(["pactl", "set-default-source", "echo-cancel-source"], check=False)
+        subprocess.run(["pactl", "set-default-sink", "echo-cancel-sink"], check=False)
 
     except subprocess.CalledProcessError:
         logging.warning("⚠️ Failed to load module-echo-cancel. Is PulseAudio running?")
