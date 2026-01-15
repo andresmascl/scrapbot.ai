@@ -67,24 +67,26 @@ async function getAggregatedState() {
     const hasYoutube = tabs.length > 0;
 
     let isPlaying = false;
-    
-    if (hasYoutube) {
-      // Try to get playback status with a strict timeout
-      try {
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout")), 1000)
-        );
-        const messagePromise = chrome.tabs.sendMessage(tabs[0].id, {
-          action: "get_video_state",
-        });
 
-        const response = await Promise.race([messagePromise, timeoutPromise]);
-        if (response) {
-          isPlaying = response.isPlaying;
+    if (hasYoutube) {
+      // Try to find if ANY tab is playing
+      for (const tab of tabs) {
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), 500)
+          );
+          const messagePromise = chrome.tabs.sendMessage(tab.id, {
+            action: "get_video_state",
+          });
+
+          const response = await Promise.race([messagePromise, timeoutPromise]);
+          if (response && response.isPlaying) {
+            isPlaying = true;
+            break;
+          }
+        } catch (e) {
+          // Ignore individual tab errors/timeouts
         }
-      } catch (e) {
-        // Content script took too long or isn't ready
-        console.log("⚠️ Could not get video state (timed out or not ready)");
       }
     }
 
@@ -130,12 +132,18 @@ chrome.tabs.onCreated.addListener(reportState);
 
 async function relayToContent(msg) {
   try {
-    // Find active YouTube tab
-    let [tab] = await chrome.tabs.query({
+    // Find YouTube tabs across all windows
+    const tabs = await chrome.tabs.query({
       url: "https://www.youtube.com/*",
-      active: true,
-      currentWindow: true,
     });
+
+    // Priority:
+    // 1. Active tab in the current (focused) window
+    // 2. Active tab in any window
+    // 3. First available YouTube tab
+    let tab = tabs.find(t => t.active && t.lastFocusedWindow) ||
+              tabs.find(t => t.active) ||
+              tabs[0];
 
     if (tab) {
       // Try to ping the content script to see if it's alive

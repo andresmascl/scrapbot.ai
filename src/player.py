@@ -168,7 +168,8 @@ async def wait_for_ready(timeout=60, needs_youtube=False):
         # Proactively request state while waiting
         if state["connected"]:
             # Reduce frequency of requests to avoid overwhelming the extension
-            if int(elapsed) % 2 == 0:
+            # Request state immediately and then every 2 seconds
+            if elapsed < 1.0 or int(elapsed) % 2 == 0:
                 logging.debug("📡 Requesting browser state...")
                 await request_browser_state()
 
