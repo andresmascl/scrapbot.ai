@@ -7,7 +7,7 @@ import pyaudio
 from ctypes import *
 from contextlib import contextmanager
 
-from config import LOG_LEVEL
+from src.config import LOG_LEVEL
 
 # -----------------------
 # Logging Setup (Pre-Init)
@@ -17,15 +17,15 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-import listener
-import reasoner
+from src import listener
+from src import reasoner
 
-from config import FRAME_SIZE, PROJECT_ID, AUDIO_DEVICE_INDEX
-from app_state import listen_state
-from speaker import speak
+from src.config import FRAME_SIZE, PROJECT_ID, AUDIO_DEVICE_INDEX
+from src.app_state import listen_state
+from src.speaker import speak
 
 # WebSocket player interface
-from player import (
+from src.player import (
     start_ws_server,
     search_and_play,
     play,

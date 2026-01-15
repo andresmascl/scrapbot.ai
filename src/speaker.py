@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Optional
 
-from app_state import listen_state
+from src.app_state import listen_state
 
 # -----------------------
 # Speaker configuration

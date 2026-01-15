@@ -5,7 +5,7 @@ import shutil
 import socket
 import websockets
 
-from config import (
+from src.config import (
     BRAVE_BINARY,
     BRAVE_PROFILE,
     BRAVE_USER_DATA_DIR,

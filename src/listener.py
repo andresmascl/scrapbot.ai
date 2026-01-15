@@ -7,8 +7,8 @@ import os
 import time
 
 from openwakeword.model import Model
-from config import WAKE_KEY, WAKE_THRESHOLD, FRAME_SIZE
-from app_state import listen_state
+from src.config import WAKE_KEY, WAKE_THRESHOLD, FRAME_SIZE
+from src.app_state import listen_state
 
 # -------------------------
 # Constants
@@ -17,7 +17,8 @@ from app_state import listen_state
 READ_CHUNK_SIZE = FRAME_SIZE
 
 WAKE_SOUND_PATH = os.path.join(
-    os.path.dirname(__file__),
+    os.getcwd(),
+    "assets",
     "wakeword-confirmed.mp3",
 )
 

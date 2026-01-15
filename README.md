@@ -101,38 +101,44 @@ This runs **directly on the host OS**, not inside Docker.
 ## Project Structure
 
 SCRAPBOT.AI/
+├── src/
+│   ├── app_state.py
+│   ├── config.py
+│   ├── listener.py
+│   ├── player.py
+│   ├── reasoner.py
+│   └── speaker.py
+├── docs/
+│   ├── 10KFEETVIEW.mmd
+│   ├── PROMPT.md
+│   └── SEQUENCEDIAGRAM.md
+├── assets/
+│   └── wakeword-confirmed.mp3
+├── config/
+│   └── asound.conf
 ├── creds/
 ├── chrome-extension/
 ├── .env
 ├── .env.demo
-├── listener.py
 ├── main.py
-├── player.py
-├── app_state.py
 ├── Makefile
 ├── README.md
-├── reasoner.py
-├── requirements.txt
-├── config.py
-├── speaker.py
-├── asound.conf
-├── PROMPT.md
-└── SEQUENCEDIAGRAM.md
+└── requirements.txt
 
 ### Key Files
 
-- `listener.py` — audio capture, wake-word detection, silence detection
-- `reasoner.py` — STT handling, intent reasoning, JSON responses
-- `player.py` — WebSocket browser control
-- `app_state.py` — shared async application state
+- `src/listener.py` — audio capture, wake-word detection, silence detection
+- `src/reasoner.py` — STT handling, intent reasoning, JSON responses
+- `src/player.py` — WebSocket browser control
+- `src/app_state.py` — shared async application state
 - `main.py` — event loop and orchestration
 - `Makefile` — environment setup and execution
 - `chrome-extension/` — Chrome extension files for browser automation
-- `config.py` — runtime constants and defaults
-- `speaker.py` — Text-to-Speech (TTS) output
-- `asound.conf` — ALSA sound server configuration for audio input/output
-- `PROMPT.md` — Prompt file sent to Vertex Multimodal Live AI
-- `SEQUENCEDIAGRAM.md` — General system workflow diagram
+- `src/config.py` — runtime constants and defaults
+- `src/speaker.py` — Text-to-Speech (TTS) output
+- `config/asound.conf` — ALSA sound server configuration for audio input/output
+- `docs/PROMPT.md` — Prompt file sent to Vertex Multimodal Live AI
+- `docs/SEQUENCEDIAGRAM.md` — General system workflow diagram
 
 ---
 
@@ -265,9 +271,9 @@ Core pipeline is stable. Interfaces may evolve.
 
 Clear separation of concerns:
 
-- `listener.py` — audio + wake word
-- `reasoner.py` — reasoning + intent
-- `player.py` — execution layer
+- `src/listener.py` — audio + wake word
+- `src/reasoner.py` — reasoning + intent
+- `src/player.py` — execution layer
 - `main.py` — orchestration
 
 This makes the system easy to debug, extend, or replace piece-by-piece.

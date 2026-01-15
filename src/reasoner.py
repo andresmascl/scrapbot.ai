@@ -9,14 +9,14 @@ import torch
 from google import genai
 from google.genai import types
 
-from config import (
+from src.config import (
     COMMAND_TIMEOUT,
     PROJECT_ID,
     MODEL_NAME,
     SILENCE_SECONDS,
     VAD_THRESHOLD,
 )
-from app_state import listen_state
+from src.app_state import listen_state
 
 # -----------------------
 # Model / API config
@@ -44,7 +44,9 @@ SILENCE_RELATIVE_K = 1.4    # silence = near noise floor
 
 def get_system_instruction():
     try:
-        with open("PROMPT.md", "r") as f:
+        # Get path relative to project root (main.py's location)
+        prompt_path = os.path.join(os.getcwd(), "docs", "PROMPT.md")
+        with open(prompt_path, "r") as f:
             return f.read()
     except FileNotFoundError:
         return "You are a helpful assistant."

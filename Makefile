@@ -20,7 +20,7 @@ help:
 	@echo "  make tts         Install Piper TTS and voices"
 	@echo "  make run         Run Scrapbot"
 	@echo "  make clean       Remove virtualenv and caches"
-	@ECHO "  make test        Run tests"
+	@echo "  make test        Run tests"
 
 # -------------------------
 # Environment setup
@@ -37,6 +37,7 @@ deps: venv tts
 	$(PIP) install --upgrade pip setuptools wheel
 	$(PIP) install -r requirements.txt
 	$(PIP) install silero-vad==6.2.0 --no-deps
+	@echo "PYTHONPATH=. >> .env"
 
 
 # -------------------------
