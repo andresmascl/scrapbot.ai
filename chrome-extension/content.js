@@ -33,7 +33,21 @@ chrome.runtime.sendMessage({ type: "CONTENT_READY" });
 // MESSAGE HANDLER
 // --------------------------------------------------
 
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === "ping") {
+    sendResponse({ status: "ok" });
+    return;
+  }
+
+  if (msg.action === "get_video_state") {
+    const video = document.querySelector("video");
+    sendResponse({
+      isPlaying: !!(video && !video.paused && !video.ended),
+      title: document.title,
+    });
+    return;
+  }
+
   if (msg.action === "search" && msg.query) {
     console.log("🎯 New search request:", msg.query);
 

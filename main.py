@@ -17,6 +17,15 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
+# Silence noisy third-party libraries
+logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("google").setLevel(logging.WARNING)
+logging.getLogger("google_genai").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("onnxruntime").setLevel(logging.ERROR)
+logging.getLogger("torch").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+
 from src import listener
 from src import reasoner
 
@@ -163,7 +172,8 @@ async def main_loop():
     # Ensure AEC is available before initializing PyAudio
     ensure_echo_cancellation()
 
-    p = pyaudio.PyAudio()
+    with no_alsa_err():
+        p = pyaudio.PyAudio()
     device_index, native_rate = find_aec_input_device(p)
 
     stream = p.open(
@@ -192,7 +202,7 @@ async def main_loop():
             logging.info("🛰️ Listening for command...")
 
             result = await reasoner.process_voice_command(audio_gen)
-            logging.info(f"📋 Reasoner returned: {result}")
+            logging.debug(f"📋 Reasoner returned: {result}")
 
             if isinstance(result, dict):
                 intent = result.get("intent")

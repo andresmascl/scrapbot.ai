@@ -26,7 +26,7 @@ LOCATION = os.getenv("GCP_REGION", "us-central1")
 MODEL_ID = os.getenv("VERTEX_MODEL_NAME", MODEL_NAME)
 SILENCE_THRESHOLD_MS = int(float(SILENCE_SECONDS) * 1000)
 
-logging.info("Loading Silero VAD in reasoner...")
+logging.debug("Loading Silero VAD in reasoner...")
 vad_model, _ = torch.hub.load(
     repo_or_dir="snakers4/silero-vad",
     model="silero_vad",
@@ -227,8 +227,8 @@ async def process_voice_command(audio_gen):
         if transcript:
             logging.info(f"🗣️ Transcript: {transcript}")
 
-        logging.info("✅ Parsed JSON:")
-        logging.info(json.dumps(data, indent=2))
+        logging.debug("✅ Parsed JSON:")
+        logging.debug(json.dumps(data, indent=2))
 
         return data
 

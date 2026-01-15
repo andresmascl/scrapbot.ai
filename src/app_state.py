@@ -1,4 +1,32 @@
 import asyncio
+import time
+
+
+class BrowserState:
+    def __init__(self):
+        self.connected = False
+        self.youtube_tab_open = False
+        self.is_playing = False
+        self.ready = False
+        self.last_update = 0
+        self._lock = asyncio.Lock()
+
+    async def update(self, **kwargs):
+        async with self._lock:
+            for k, v in kwargs.items():
+                if hasattr(self, k):
+                    setattr(self, k, v)
+            self.last_update = time.time()
+
+    async def get_state(self):
+        async with self._lock:
+            return {
+                "connected": self.connected,
+                "youtube_tab_open": self.youtube_tab_open,
+                "is_playing": self.is_playing,
+                "ready": self.ready,
+                "last_update": self.last_update,
+            }
 
 
 class ListenState:
@@ -42,5 +70,6 @@ class ListenState:
             self._listener_running = True
 
 
-# Singleton used across modules
+# Singletons used across modules
 listen_state = ListenState()
+browser_state = BrowserState()
